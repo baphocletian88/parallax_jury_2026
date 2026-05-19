@@ -34,13 +34,14 @@ let unsubscribers = [];
 // ─── DATA MODEL ──────────────────────────────────────────────────────────────
 const FILMS = {
   '2d': [
-    { id: 'ronnie',  title: 'Ronnie en la Luna',    director: 'UDEM',  duration: '10 min', type: '2D' },
-    { id: 'battle',  title: 'Battle of the Batter', director: 'UDEM',  duration: '7 min',  type: '2D' },
-    { id: 'flama',   title: 'Flama',                director: 'UDEM',  duration: '6 min',  type: '2D' },
-    { id: 'malita',  title: 'Malita pa Ti',          director: 'UDEM',  duration: '11 min', type: '2D' },
-    { id: 'beatbox', title: 'Beatbox',               director: 'UDEM',  duration: '5 min',  type: '2D' },
-    { id: 'freshtzu',title: 'Freshtzu',              director: 'UDEM',  duration: '4 min',  type: '2D' },
-    { id: 'otterside',title: 'Otterside',            director: 'UDEM',  duration: '7 min',  type: '2D' },
+    { id: 'afterlight', title: 'Afterlight',           director: 'UDEM',  duration: '— min', type: '2D' },
+    { id: 'ronnie',     title: 'Ronnie en la Luna',    director: 'UDEM',  duration: '10 min', type: '2D' },
+    { id: 'battle',     title: 'Battle of the Batter', director: 'UDEM',  duration: '7 min',  type: '2D' },
+    { id: 'flama',      title: 'Flama',                director: 'UDEM',  duration: '6 min',  type: '2D' },
+    { id: 'malita',     title: 'Malita pa Ti',          director: 'UDEM',  duration: '11 min', type: '2D' },
+    { id: 'beatbox',    title: 'Beatbox',               director: 'UDEM',  duration: '5 min',  type: '2D' },
+    { id: 'freshtzu',   title: 'Freshtzu',              director: 'UDEM',  duration: '4 min',  type: '2D' },
+    { id: 'otterside',  title: 'Otterside',             director: 'UDEM',  duration: '7 min',  type: '2D' },
   ],
   '3d': [
     { id: 'contact',   title: 'Contact',              director: 'UDEM',  duration: '6 min',  type: '3D' },
@@ -53,12 +54,14 @@ const FILMS = {
     { id: 'escamas',   title: 'Escamas',               director: 'UDEM',  duration: '7 min',  type: '3D' },
   ],
   'intl': [
-    { id: 'inv2d_1', title: '[Invitado 2D — 01]', director: 'Universidad Invitada', duration: '10 min', type: 'Internacional' },
-    { id: 'inv2d_2', title: '[Invitado 2D — 02]', director: 'Universidad Invitada', duration: '10 min', type: 'Internacional' },
-    { id: 'inv2d_3', title: '[Invitado 2D — 03]', director: 'Universidad Invitada', duration: '10 min', type: 'Internacional' },
-    { id: 'inv2d_4', title: '[Invitado 2D — 04]', director: 'Universidad Invitada', duration: '10 min', type: 'Internacional' },
-    { id: 'inv3d_1', title: '[Invitado 3D — 01]', director: 'Universidad Invitada', duration: '10 min', type: 'Internacional' },
-    { id: 'inv3d_2', title: '[Invitado 3D — 02]', director: 'Universidad Invitada', duration: '10 min', type: 'Internacional' },
+    { id: 'mascara',    title: 'La Máscara de la Muerte Roja', director: 'UDIT · España',  duration: '— min', type: 'Internacional' },
+    { id: 'fratmagic',  title: 'Frat Magic',                   director: 'UDIT · España',  duration: '— min', type: 'Internacional' },
+    { id: 'burbuja',    title: 'Burbuja',                      director: 'DUOC OC · Chile', duration: '— min', type: 'Internacional' },
+    { id: 'reflejo',    title: 'Reflejo',                      director: 'DUOC OC · Chile', duration: '— min', type: 'Internacional' },
+    { id: 'niceday',    title: 'Have a Nice Day',              director: 'NABA · Italia',  duration: '— min', type: 'Internacional' },
+    { id: 'breakpoint', title: 'The Breaking Point',           director: 'NABA · Italia',  duration: '— min', type: 'Internacional' },
+    { id: 'chase',      title: 'Chase',                        director: 'NABA · Italia',  duration: '— min', type: 'Internacional' },
+    { id: 'floraex',    title: 'Flora Ex Machina',             director: 'NABA · Italia',  duration: '— min', type: 'Internacional' },
   ]
 };
 
@@ -142,12 +145,12 @@ function showLogin(demoMode = false) {
           <label class="form-label">SELECCIONAR JUEZ</label>
           <div class="judge-selector">
             <div class="judge-option" data-judge="A" onclick="selectJudge('A')">
-              <div class="judge-id">A</div>
-              <div class="judge-info"><span class="judge-name">Juez A</span><span class="judge-role">Evaluador Principal</span></div>
+              <div class="judge-id">IL</div>
+              <div class="judge-info"><span class="judge-name">Irina Lescano</span><span class="judge-role">Juez 1 · Evaluadora Oficial</span></div>
             </div>
             <div class="judge-option" data-judge="B" onclick="selectJudge('B')">
-              <div class="judge-id">B</div>
-              <div class="judge-info"><span class="judge-name">Juez B</span><span class="judge-role">Evaluador Secundario</span></div>
+              <div class="judge-id">AT</div>
+              <div class="judge-info"><span class="judge-name">Alejandro Treviño</span><span class="judge-role">Juez 2 · Evaluador Oficial</span></div>
             </div>
           </div>
           <button class="btn-login" onclick="enterPlatform(${demoMode})" id="btn-login" disabled>
@@ -203,7 +206,7 @@ function buildPlatform(demoMode) {
         </button>
       </nav>
       <div class="topbar-right">
-        <div class="judge-badge">Juez ${currentJudge}</div>
+        <div class="judge-badge">${currentJudge === 'A' ? 'Irina Lescano' : 'Alejandro Treviño'}</div>
         <div class="live-badge ${demoMode ? 'demo' : 'live'}">
           <span class="live-dot"></span>${demoMode ? 'DEMO' : 'EN VIVO'}
         </div>
@@ -256,6 +259,7 @@ function buildPlatform(demoMode) {
     if (!demoMode && db) {
       await setDoc(doc(db, 'scores', `${currentJudge}_${filmId}`), {
         judgeId: currentJudge,
+        judgeName: JUDGE_NAMES[currentJudge] || `Juez ${currentJudge}`,
         filmId,
         notes: ta.value,
         updatedAt: serverTimestamp()
@@ -274,6 +278,8 @@ function buildPlatform(demoMode) {
     }
     if (!demoMode && db) {
       await setDoc(doc(db, 'scores', `${currentJudge}_${filmId}`), {
+        judgeId: currentJudge,
+        judgeName: JUDGE_NAMES[currentJudge] || `Juez ${currentJudge}`,
         finalized: true, finalizedAt: serverTimestamp()
       }, { merge: true });
     }
@@ -285,7 +291,9 @@ async function saveToFirebase(filmId, criteriaId, value) {
   if (!db) return;
   const docId = `${currentJudge}_${filmId}`;
   await setDoc(doc(db, 'scores', docId), {
-    judgeId: currentJudge, filmId,
+    judgeId: currentJudge,
+    judgeName: JUDGE_NAMES[currentJudge] || `Juez ${currentJudge}`,
+    filmId,
     [`criteria.${criteriaId}`]: value,
     updatedAt: serverTimestamp()
   }, { merge: true });
@@ -402,8 +410,14 @@ function getAllFilmsForView() {
 
 function getAllFilmsForCategory(catId) {
   if (catId === 'internacional') return FILMS.intl;
+  if (catId === 'animacion-2d') return FILMS['2d'];
+  if (catId === 'animacion-3d') return FILMS['3d'];
+  // narrativa and direccion-arte: all propios (2D + 3D)
   return [...FILMS['2d'], ...FILMS['3d']];
 }
+
+// ─── JUDGE NAME MAP ───────────────────────────────────────────────────────────
+const JUDGE_NAMES = { A: 'Irina Lescano', B: 'Alejandro Treviño' };
 
 // ─── OVERVIEW ─────────────────────────────────────────────────────────────────
 function renderOverview() {
@@ -412,13 +426,14 @@ function renderOverview() {
   [...FILMS['2d'], ...FILMS['3d'], ...FILMS.intl].forEach(f => {
     if (scores[f.id] && Object.values(scores[f.id]).some(v => typeof v === 'number' && v > 0)) evaluated++;
   });
+  const judgeName = JUDGE_NAMES[currentJudge] || `Juez ${currentJudge}`;
 
   $('main-content').innerHTML = `
     <div class="overview-page">
       <!-- Hero -->
       <div class="overview-hero">
         <div class="overview-hero-left">
-          <div class="overview-label">SISTEMA DE EVALUACIÓN · JURADO ${currentJudge}</div>
+          <div class="overview-label">SISTEMA DE EVALUACIÓN · ${judgeName.toUpperCase()}</div>
           <h1 class="overview-title">Parallax <span class="overview-year">2026</span></h1>
           <div class="overview-meta">22 de mayo · Cineteca Nuevo León · Monterrey, N.L.</div>
         </div>
@@ -475,7 +490,7 @@ function renderOverview() {
 // ─── CATEGORY VIEW ────────────────────────────────────────────────────────────
 function renderCategoryView(catId) {
   const cat = CATEGORIES[catId];
-  const films = catId === 'internacional' ? FILMS.intl : [...FILMS['2d'], ...FILMS['3d']];
+  const films = getAllFilmsForCategory(catId);
   const rubric = RUBRICS[cat.rubric];
   const maxScore = getMaxScore(cat.rubric);
 
@@ -487,7 +502,7 @@ function renderCategoryView(catId) {
           CATEGORÍA · ${cat.label.toUpperCase()}
         </div>
         <h1 class="cat-header-title">${cat.label}</h1>
-        <div class="cat-header-meta">${films.length} cortometrajes · ${maxScore} puntos máx. · Juez ${currentJudge}</div>
+        <div class="cat-header-meta">${films.length} cortometrajes · ${maxScore} puntos máx. · ${JUDGE_NAMES[currentJudge] || 'Juez ' + currentJudge}</div>
       </div>
       <div class="cat-header-right">
         <div class="cat-score-overview">
