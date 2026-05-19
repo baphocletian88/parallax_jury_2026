@@ -65,6 +65,9 @@ const FILMS = {
   ]
 };
 
+// ─── JUDGE NAME MAP ──────────────────────────────────────────────────────────
+const JUDGE_NAMES = { A: 'Irina Lescano', B: 'Alejandro Treviño' };
+
 const CATEGORIES = {
   'animacion-2d':     { label: 'Mejor Animación 2D',           color: '#00e5a0', films: 'all', rubric: 'anim2d' },
   'animacion-3d':     { label: 'Mejor Animación 3D',           color: '#7c3aed', films: 'all', rubric: 'anim3d' },
@@ -415,9 +418,6 @@ function getAllFilmsForCategory(catId) {
   // narrativa and direccion-arte: all propios (2D + 3D)
   return [...FILMS['2d'], ...FILMS['3d']];
 }
-
-// ─── JUDGE NAME MAP ───────────────────────────────────────────────────────────
-const JUDGE_NAMES = { A: 'Irina Lescano', B: 'Alejandro Treviño' };
 
 // ─── OVERVIEW ─────────────────────────────────────────────────────────────────
 function renderOverview() {
