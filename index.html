@@ -1,0 +1,1104 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PARALLAX · Sistema de Evaluación · Jurado</title>
+
+<!-- Fonts -->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;500;600;700;800&family=JetBrains+Mono:wght@300;400;500;600&family=Figtree:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+
+<!-- Firebase CDN -->
+<script type="module">
+import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js';
+import { getFirestore, collection, doc, onSnapshot, setDoc, updateDoc, getDoc, getDocs, serverTimestamp, query, orderBy } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js';
+
+// ─── FIREBASE CONFIG ─────────────────────────────────────────────────────────
+// Replace with your Firebase project config
+const firebaseConfig = {
+  apiKey: "REPLACE_WITH_YOUR_API_KEY",
+  authDomain: "REPLACE_WITH_YOUR_AUTH_DOMAIN",
+  projectId: "REPLACE_WITH_YOUR_PROJECT_ID",
+  storageBucket: "REPLACE_WITH_YOUR_STORAGE_BUCKET",
+  messagingSenderId: "REPLACE_WITH_YOUR_SENDER_ID",
+  appId: "REPLACE_WITH_YOUR_APP_ID"
+};
+
+let app, db;
+let currentJudge = null;
+let currentCategory = 'overview';
+let unsubscribers = [];
+
+// ─── DATA MODEL ──────────────────────────────────────────────────────────────
+const FILMS = {
+  '2d': [
+    { id: 'ronnie',  title: 'Ronnie en la Luna',    director: 'UDEM',  duration: '10 min', type: '2D' },
+    { id: 'battle',  title: 'Battle of the Batter', director: 'UDEM',  duration: '7 min',  type: '2D' },
+    { id: 'flama',   title: 'Flama',                director: 'UDEM',  duration: '6 min',  type: '2D' },
+    { id: 'malita',  title: 'Malita pa Ti',          director: 'UDEM',  duration: '11 min', type: '2D' },
+    { id: 'beatbox', title: 'Beatbox',               director: 'UDEM',  duration: '5 min',  type: '2D' },
+    { id: 'freshtzu',title: 'Freshtzu',              director: 'UDEM',  duration: '4 min',  type: '2D' },
+    { id: 'otterside',title: 'Otterside',            director: 'UDEM',  duration: '7 min',  type: '2D' },
+  ],
+  '3d': [
+    { id: 'contact',   title: 'Contact',              director: 'UDEM',  duration: '6 min',  type: '3D' },
+    { id: 'blockhead', title: 'Blockhead',             director: 'UDEM',  duration: '4 min',  type: '3D' },
+    { id: 'lonestar',  title: 'Lone Star Store',       director: 'UDEM',  duration: '10 min', type: '3D' },
+    { id: 'rex',       title: 'Rex',                   director: 'UDEM',  duration: '13 min', type: '3D' },
+    { id: 'recuerda',  title: 'Recuerda que Te Amo',   director: 'UDEM',  duration: '6 min',  type: '3D' },
+    { id: 'space',     title: 'I Need Some Space',     director: 'UDEM',  duration: '6 min',  type: '3D' },
+    { id: 'giro',      title: 'Un Giro en el Agua',    director: 'UDEM',  duration: '6 min',  type: '3D' },
+    { id: 'escamas',   title: 'Escamas',               director: 'UDEM',  duration: '7 min',  type: '3D' },
+  ],
+  'intl': [
+    { id: 'inv2d_1', title: '[Invitado 2D — 01]', director: 'Universidad Invitada', duration: '10 min', type: 'Internacional' },
+    { id: 'inv2d_2', title: '[Invitado 2D — 02]', director: 'Universidad Invitada', duration: '10 min', type: 'Internacional' },
+    { id: 'inv2d_3', title: '[Invitado 2D — 03]', director: 'Universidad Invitada', duration: '10 min', type: 'Internacional' },
+    { id: 'inv2d_4', title: '[Invitado 2D — 04]', director: 'Universidad Invitada', duration: '10 min', type: 'Internacional' },
+    { id: 'inv3d_1', title: '[Invitado 3D — 01]', director: 'Universidad Invitada', duration: '10 min', type: 'Internacional' },
+    { id: 'inv3d_2', title: '[Invitado 3D — 02]', director: 'Universidad Invitada', duration: '10 min', type: 'Internacional' },
+  ]
+};
+
+const CATEGORIES = {
+  'animacion-2d':     { label: 'Mejor Animación 2D',           color: '#00e5a0', films: 'all', rubric: 'anim2d' },
+  'animacion-3d':     { label: 'Mejor Animación 3D',           color: '#7c3aed', films: 'all', rubric: 'anim3d' },
+  'narrativa':        { label: 'Mejor Narrativa',               color: '#f59e0b', films: 'all', rubric: 'narrativa' },
+  'direccion-arte':   { label: 'Mejor Dirección de Arte',       color: '#ef4444', films: 'all', rubric: 'arte' },
+  'internacional':    { label: 'Mejor Proyecto Internacional',  color: '#06b6d4', films: 'intl', rubric: 'intl' },
+};
+
+const RUBRICS = {
+  anim2d: [
+    { id: 'fluidez',   label: 'Fluidez y Timing',       weight: 5, desc: 'Spacing, arcos, squash & stretch' },
+    { id: 'actuacion', label: 'Actuación y Expresividad',weight: 5, desc: 'Acting, poses clave, lenguaje corporal' },
+    { id: 'visual',    label: 'Calidad Visual y Estilo', weight: 4, desc: 'Paleta, línea, composición' },
+    { id: 'sonido',    label: 'Diseño Sonoro',           weight: 3, desc: 'Mezcla, sincronía audiovisual' },
+    { id: 'original',  label: 'Propuesta Original',      weight: 2, desc: 'Identidad visual, audacia creativa' },
+    { id: 'impacto',   label: 'Impacto General',         weight: 1, desc: 'Memorabilidad, engagement' },
+  ],
+  anim3d: [
+    { id: 'tecnica',   label: 'Calidad Técnica 3D',      weight: 5, desc: 'Weight, follow-through, físicas' },
+    { id: 'render',    label: 'Render e Iluminación',    weight: 5, desc: 'Lighting, shading, compositing' },
+    { id: 'assets',    label: 'Diseño de Assets',        weight: 4, desc: 'Modelling, texturing, producción' },
+    { id: 'actuacion', label: 'Actuación y Storytelling',weight: 3, desc: 'Body language, cinematografía' },
+    { id: 'sonido',    label: 'Integración Audiovisual', weight: 2, desc: 'Sound design, música, mezcla' },
+    { id: 'impacto',   label: 'Impacto General',         weight: 1, desc: 'Memorabilidad, engagement' },
+  ],
+  narrativa: [
+    { id: 'estructura',label: 'Estructura Narrativa',    weight: 6, desc: 'Arco dramático, setup y payoff' },
+    { id: 'emocional', label: 'Impacto Emocional',       weight: 5, desc: 'Conexión emocional, resonancia' },
+    { id: 'ritmo',     label: 'Ritmo y Pacing',          weight: 4, desc: 'Timing dramático, edición' },
+    { id: 'original',  label: 'Originalidad del Concepto',weight:3, desc: 'Premisa, subversión de géneros' },
+    { id: 'integracion',label:'Integración Visual-Narrativa',weight:2,desc:'Visual storytelling, metáforas' },
+  ],
+  arte: [
+    { id: 'coherencia',label: 'Coherencia Visual',       weight: 5, desc: 'Consistencia de estilo, paleta' },
+    { id: 'color',     label: 'Color y Atmósfera',       weight: 5, desc: 'Teoría del color, mood por escena' },
+    { id: 'personajes',label: 'Diseño de Personajes',    weight: 4, desc: 'Siluetas, expresividad, originalidad' },
+    { id: 'composicion',label:'Composición y Cine',      weight: 3, desc: 'Jerarquía visual, cámara' },
+    { id: 'identidad', label: 'Identidad Visual',        weight: 3, desc: 'Estética propia, audacia' },
+  ],
+  intl: [
+    { id: 'produccion',label: 'Calidad de Producción',   weight: 5, desc: 'Acabado técnico, polish global' },
+    { id: 'autoral',   label: 'Voz Autoral',             weight: 5, desc: 'Punto de vista, identidad' },
+    { id: 'cultural',  label: 'Relevancia Cultural',     weight: 4, desc: 'Universalidad, alcance temático' },
+    { id: 'innovacion',label: 'Innovación',              weight: 4, desc: 'Originalidad de forma y contenido' },
+    { id: 'impacto',   label: 'Impacto en el Festival',  weight: 2, desc: 'Contribución, memorabilidad' },
+  ]
+};
+
+// ─── INIT ─────────────────────────────────────────────────────────────────────
+window.addEventListener('DOMContentLoaded', () => {
+  try {
+    app = initializeApp(firebaseConfig);
+    db = getFirestore(app);
+    showLogin();
+  } catch (e) {
+    // Demo mode without Firebase
+    showLogin(true);
+  }
+});
+
+// ─── UI HELPERS ───────────────────────────────────────────────────────────────
+function $(id) { return document.getElementById(id); }
+function el(tag, cls, html) { const e = document.createElement(tag); if(cls) e.className = cls; if(html) e.innerHTML = html; return e; }
+
+function showLogin(demoMode = false) {
+  $('app').innerHTML = `
+    <div class="login-screen">
+      <div class="login-bg"></div>
+      <div class="login-card">
+        <div class="login-logo">
+          <span class="logo-text">PARALLAX</span>
+          <span class="logo-dot"></span>
+        </div>
+        <div class="login-title">Sistema de Evaluación</div>
+        <div class="login-subtitle">PLATAFORMA OFICIAL DE JURADO · EDICIÓN 2026</div>
+        ${demoMode ? '<div class="demo-banner">⚡ MODO DEMO — Configura Firebase para sincronización en tiempo real</div>' : ''}
+        <div class="login-form">
+          <label class="form-label">SELECCIONAR JUEZ</label>
+          <div class="judge-selector">
+            <div class="judge-option" data-judge="A" onclick="selectJudge('A')">
+              <div class="judge-id">A</div>
+              <div class="judge-info"><span class="judge-name">Juez A</span><span class="judge-role">Evaluador Principal</span></div>
+            </div>
+            <div class="judge-option" data-judge="B" onclick="selectJudge('B')">
+              <div class="judge-id">B</div>
+              <div class="judge-info"><span class="judge-name">Juez B</span><span class="judge-role">Evaluador Secundario</span></div>
+            </div>
+          </div>
+          <button class="btn-login" onclick="enterPlatform(${demoMode})" id="btn-login" disabled>
+            <span>Ingresar al Sistema</span>
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+          </button>
+        </div>
+        <div class="login-badge">🔒 Acceso exclusivo jurado · Parallax UDEM 2026</div>
+      </div>
+    </div>`;
+  window.selectJudge = function(judge) {
+    document.querySelectorAll('.judge-option').forEach(o => o.classList.remove('selected'));
+    document.querySelector(`[data-judge="${judge}"]`).classList.add('selected');
+    currentJudge = judge;
+    $('btn-login').disabled = false;
+    $('btn-login').classList.add('ready');
+  };
+  window.enterPlatform = function(demo) {
+    if (!currentJudge) return;
+    buildPlatform(demo);
+  };
+}
+
+// ─── MAIN PLATFORM ────────────────────────────────────────────────────────────
+let scores = {}; // local state { filmId: { criteriaId: score, notes: '' } }
+let allScores = {}; // both judges combined for ranking
+
+function buildPlatform(demoMode) {
+  $('app').innerHTML = `
+    <!-- TOPBAR -->
+    <header class="topbar">
+      <div class="topbar-left">
+        <span class="logo-text">PARALLAX</span>
+        <span class="topbar-divider">|</span>
+        <span class="topbar-system">SISTEMA DE EVALUACIÓN</span>
+      </div>
+      <nav class="topbar-nav">
+        <button class="nav-tab active" data-tab="overview" onclick="switchTab('overview')">Overview</button>
+        <button class="nav-tab" data-tab="animacion-2d" onclick="switchTab('animacion-2d')">
+          <span class="nav-dot" style="background:#00e5a0"></span>Animación 2D
+        </button>
+        <button class="nav-tab" data-tab="animacion-3d" onclick="switchTab('animacion-3d')">
+          <span class="nav-dot" style="background:#7c3aed"></span>Animación 3D
+        </button>
+        <button class="nav-tab" data-tab="narrativa" onclick="switchTab('narrativa')">
+          <span class="nav-dot" style="background:#f59e0b"></span>Narrativa
+        </button>
+        <button class="nav-tab" data-tab="direccion-arte" onclick="switchTab('direccion-arte')">
+          <span class="nav-dot" style="background:#ef4444"></span>Dirección de Arte
+        </button>
+        <button class="nav-tab" data-tab="internacional" onclick="switchTab('internacional')">
+          <span class="nav-dot" style="background:#06b6d4"></span>Internacional
+        </button>
+      </nav>
+      <div class="topbar-right">
+        <div class="judge-badge">Juez ${currentJudge}</div>
+        <div class="live-badge ${demoMode ? 'demo' : 'live'}">
+          <span class="live-dot"></span>${demoMode ? 'DEMO' : 'EN VIVO'}
+        </div>
+      </div>
+    </header>
+
+    <!-- MAIN CONTENT -->
+    <main class="main-content" id="main-content">
+      <!-- Overview loaded by default -->
+    </main>`;
+
+  // Set up realtime if Firebase is available
+  if (!demoMode && db) {
+    setupRealtimeListeners();
+  }
+
+  switchTab('overview');
+
+  // Global functions
+  window.switchTab = function(tab) {
+    currentCategory = tab;
+    document.querySelectorAll('.nav-tab').forEach(t => {
+      t.classList.toggle('active', t.dataset.tab === tab);
+    });
+    if (tab === 'overview') renderOverview();
+    else renderCategoryView(tab);
+  };
+
+  window.setScore = async function(filmId, criteriaId, value) {
+    if (!scores[filmId]) scores[filmId] = {};
+    scores[filmId][criteriaId] = value;
+
+    // Update UI immediately
+    const el = document.querySelector(`[data-score="${filmId}-${criteriaId}"]`);
+    if (el) el.parentElement.parentElement.querySelectorAll('.score-btn').forEach((b,i) => {
+      b.classList.toggle('active', i+1 === value);
+    });
+
+    updateFilmTotal(filmId);
+    if (!demoMode && db) await saveToFirebase(filmId, criteriaId, value);
+    updateRankingPanel();
+  };
+
+  window.saveNotes = async function(filmId) {
+    const ta = document.querySelector(`[data-notes="${filmId}"]`);
+    if (!ta) return;
+    if (!scores[filmId]) scores[filmId] = {};
+    scores[filmId].notes = ta.value;
+    showSaveConfirm(filmId);
+    if (!demoMode && db) {
+      await setDoc(doc(db, 'scores', `${currentJudge}_${filmId}`), {
+        judgeId: currentJudge,
+        filmId,
+        notes: ta.value,
+        updatedAt: serverTimestamp()
+      }, { merge: true });
+    }
+  };
+
+  window.finalizeEvaluation = async function(filmId) {
+    if (!scores[filmId]) return;
+    scores[filmId].finalized = true;
+    const card = document.querySelector(`[data-film="${filmId}"]`);
+    if (card) {
+      card.classList.add('finalized');
+      const badge = card.querySelector('.film-status');
+      if (badge) { badge.textContent = '✓ FINALIZADO'; badge.className = 'film-status finalized'; }
+    }
+    if (!demoMode && db) {
+      await setDoc(doc(db, 'scores', `${currentJudge}_${filmId}`), {
+        finalized: true, finalizedAt: serverTimestamp()
+      }, { merge: true });
+    }
+  };
+}
+
+// ─── FIREBASE OPS ─────────────────────────────────────────────────────────────
+async function saveToFirebase(filmId, criteriaId, value) {
+  if (!db) return;
+  const docId = `${currentJudge}_${filmId}`;
+  await setDoc(doc(db, 'scores', docId), {
+    judgeId: currentJudge, filmId,
+    [`criteria.${criteriaId}`]: value,
+    updatedAt: serverTimestamp()
+  }, { merge: true });
+}
+
+function setupRealtimeListeners() {
+  const unsub = onSnapshot(collection(db, 'scores'), (snap) => {
+    snap.forEach(d => {
+      const data = d.data();
+      const key = `${data.judgeId}_${data.filmId}`;
+      if (!allScores[key]) allScores[key] = {};
+      Object.assign(allScores[key], data);
+    });
+    updateRankingPanel();
+    updateLiveIndicators();
+  });
+  unsubscribers.push(unsub);
+}
+
+// ─── SCORE CALCULATION ────────────────────────────────────────────────────────
+function calcFilmScore(filmId, judgeId, rubricKey) {
+  const key = judgeId ? `${judgeId}_${filmId}` : `${currentJudge}_${filmId}`;
+  const data = judgeId ? allScores[key] : scores[filmId];
+  if (!data) return 0;
+  const rubric = RUBRICS[rubricKey];
+  if (!rubric) return 0;
+  return rubric.reduce((sum, c) => {
+    const val = judgeId ? (data.criteria?.[c.id] || 0) : (data[c.id] || 0);
+    return sum + (val * c.weight);
+  }, 0);
+}
+
+function getMaxScore(rubricKey) {
+  const rubric = RUBRICS[rubricKey];
+  if (!rubric) return 100;
+  return rubric.reduce((s, c) => s + c.weight * 5, 0);
+}
+
+function getFilmScoreLocal(filmId) {
+  if (!scores[filmId]) return 0;
+  // Compute from current category rubric
+  const cat = CATEGORIES[currentCategory];
+  if (!cat) return 0;
+  const rubric = RUBRICS[cat.rubric];
+  return rubric.reduce((sum, c) => {
+    return sum + ((scores[filmId][c.id] || 0) * c.weight);
+  }, 0);
+}
+
+function updateFilmTotal(filmId) {
+  const cat = CATEGORIES[currentCategory];
+  if (!cat) return;
+  const total = getFilmScoreLocal(filmId);
+  const max = getMaxScore(cat.rubric);
+  const el = document.querySelector(`[data-total="${filmId}"]`);
+  if (el) {
+    el.textContent = total;
+    el.style.color = total > max*0.8 ? '#00e5a0' : total > max*0.6 ? '#f59e0b' : '#ffffff';
+  }
+  const pct = document.querySelector(`[data-progress="${filmId}"]`);
+  if (pct) {
+    pct.style.width = `${(total/max)*100}%`;
+    pct.style.background = total > max*0.8 ? '#00e5a0' : total > max*0.6 ? '#f59e0b' : '#7c3aed';
+  }
+}
+
+function updateRankingPanel() {
+  const panel = document.querySelector('.ranking-panel');
+  if (!panel || currentCategory === 'overview') return;
+  const cat = CATEGORIES[currentCategory];
+  if (!cat) return;
+
+  const allFilms = getAllFilmsForView();
+  const ranked = allFilms.map(f => ({
+    ...f,
+    score: getFilmScoreLocal(f.id),
+    max: getMaxScore(cat.rubric)
+  })).sort((a,b) => b.score - a.score);
+
+  panel.innerHTML = `
+    <div class="ranking-header">
+      <span class="ranking-title">RANKING EN VIVO</span>
+      <span class="ranking-cat" style="color:${cat.color}">${cat.label}</span>
+    </div>
+    <div class="ranking-list">
+      ${ranked.map((f, i) => `
+        <div class="ranking-item ${i===0&&f.score>0?'leader':''}">
+          <span class="ranking-pos">${i+1}</span>
+          <span class="ranking-name">${f.title}</span>
+          <span class="ranking-score" style="color:${i===0&&f.score>0?cat.color:'#888'}">${f.score}<span style="font-size:10px;color:#444">/${f.max}</span></span>
+        </div>`).join('')}
+    </div>`;
+}
+
+function updateLiveIndicators() {
+  // Update progress dots in nav
+  Object.entries(CATEGORIES).forEach(([catId, cat]) => {
+    const allFilms = getAllFilmsForCategory(catId);
+    let evaluated = 0;
+    allFilms.forEach(f => {
+      if (scores[f.id] && Object.keys(scores[f.id]).some(k => scores[f.id][k] > 0)) evaluated++;
+    });
+    const dot = document.querySelector(`[data-tab="${catId}"] .nav-dot`);
+    if (dot && evaluated === allFilms.length && allFilms.length > 0) {
+      dot.style.boxShadow = `0 0 6px ${cat.color}`;
+    }
+  });
+}
+
+function getAllFilmsForView() {
+  if (currentCategory === 'internacional') return FILMS.intl;
+  return [...FILMS['2d'], ...FILMS['3d'], ...FILMS.intl];
+}
+
+function getAllFilmsForCategory(catId) {
+  if (catId === 'internacional') return FILMS.intl;
+  return [...FILMS['2d'], ...FILMS['3d']];
+}
+
+// ─── OVERVIEW ─────────────────────────────────────────────────────────────────
+function renderOverview() {
+  const totalFilms = FILMS['2d'].length + FILMS['3d'].length + FILMS.intl.length;
+  let evaluated = 0;
+  [...FILMS['2d'], ...FILMS['3d'], ...FILMS.intl].forEach(f => {
+    if (scores[f.id] && Object.values(scores[f.id]).some(v => typeof v === 'number' && v > 0)) evaluated++;
+  });
+
+  $('main-content').innerHTML = `
+    <div class="overview-page">
+      <!-- Hero -->
+      <div class="overview-hero">
+        <div class="overview-hero-left">
+          <div class="overview-label">SISTEMA DE EVALUACIÓN · JURADO ${currentJudge}</div>
+          <h1 class="overview-title">Parallax <span class="overview-year">2026</span></h1>
+          <div class="overview-meta">22 de mayo · Cineteca Nuevo León · Monterrey, N.L.</div>
+        </div>
+        <div class="overview-hero-right">
+          <div class="overview-big-metric">
+            <span class="big-num">${evaluated}</span>
+            <span class="big-sep">/</span>
+            <span class="big-total">${totalFilms}</span>
+            <span class="big-label">CORTOMETRAJES EVALUADOS</span>
+          </div>
+          <div class="overview-progress-bar">
+            <div class="overview-progress-fill" style="width:${(evaluated/totalFilms)*100}%"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Category cards -->
+      <div class="overview-cats">
+        ${Object.entries(CATEGORIES).map(([id, cat]) => {
+          const films = getAllFilmsForCategory(id);
+          let done = 0;
+          films.forEach(f => {
+            if (scores[f.id] && Object.values(scores[f.id]).some(v => typeof v==='number'&&v>0)) done++;
+          });
+          return `
+          <div class="cat-card" onclick="switchTab('${id}')" style="--cat-color:${cat.color}">
+            <div class="cat-card-top">
+              <span class="cat-dot" style="background:${cat.color}"></span>
+              <span class="cat-progress-txt">${done}/${films.length}</span>
+            </div>
+            <div class="cat-card-name">${cat.label}</div>
+            <div class="cat-card-bar">
+              <div class="cat-card-fill" style="width:${films.length>0?(done/films.length*100):0}%;background:${cat.color}"></div>
+            </div>
+            <div class="cat-card-cta">Evaluar →</div>
+          </div>`}).join('')}
+      </div>
+
+      <!-- Films grid overview -->
+      <div class="overview-section-label">TODOS LOS CORTOMETRAJES</div>
+      <div class="overview-films-grid">
+        ${[...FILMS['2d'], ...FILMS['3d'], ...FILMS.intl].map(f => {
+          const hasScores = scores[f.id] && Object.values(scores[f.id]).some(v => typeof v==='number'&&v>0);
+          return `
+          <div class="overview-film-pill ${hasScores?'evaluated':''}">
+            <span class="pill-type pill-${f.type.toLowerCase().replace(' ','')}">${f.type}</span>
+            <span class="pill-title">${f.title}</span>
+            ${hasScores ? '<span class="pill-check">✓</span>' : '<span class="pill-pending">—</span>'}
+          </div>`}).join('')}
+      </div>
+    </div>`;
+}
+
+// ─── CATEGORY VIEW ────────────────────────────────────────────────────────────
+function renderCategoryView(catId) {
+  const cat = CATEGORIES[catId];
+  const films = catId === 'internacional' ? FILMS.intl : [...FILMS['2d'], ...FILMS['3d']];
+  const rubric = RUBRICS[cat.rubric];
+  const maxScore = getMaxScore(cat.rubric);
+
+  $('main-content').innerHTML = `
+    <!-- Category Header -->
+    <div class="cat-header" style="--cat-color:${cat.color}">
+      <div class="cat-header-left">
+        <div class="cat-header-badge" style="border-color:${cat.color};color:${cat.color}">
+          CATEGORÍA · ${cat.label.toUpperCase()}
+        </div>
+        <h1 class="cat-header-title">${cat.label}</h1>
+        <div class="cat-header-meta">${films.length} cortometrajes · ${maxScore} puntos máx. · Juez ${currentJudge}</div>
+      </div>
+      <div class="cat-header-right">
+        <div class="cat-score-overview">
+          <span class="cat-evaluated-count" id="evaluated-count">0</span>
+          <span class="cat-evaluated-label">/ ${films.length}<br><small>EVALUADOS</small></span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Main layout: films + ranking sidebar -->
+    <div class="cat-layout">
+      <!-- Film list -->
+      <div class="films-column">
+        <!-- Search -->
+        <div class="search-bar">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#555" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+          <input type="text" placeholder="Buscar cortometraje..." oninput="filterFilms(this.value)" class="search-input">
+        </div>
+
+        <!-- Film cards -->
+        <div class="films-list" id="films-list">
+          ${films.map((film, idx) => renderFilmCard(film, rubric, maxScore, cat.color, idx)).join('')}
+        </div>
+      </div>
+
+      <!-- Ranking sidebar -->
+      <aside class="ranking-sidebar">
+        <div class="ranking-panel">
+          <div class="ranking-header">
+            <span class="ranking-title">RANKING EN VIVO</span>
+            <span class="ranking-cat" style="color:${cat.color}">${cat.label}</span>
+          </div>
+          <div class="ranking-list">
+            ${films.map((f,i) => `
+              <div class="ranking-item">
+                <span class="ranking-pos">${i+1}</span>
+                <span class="ranking-name">${f.title}</span>
+                <span class="ranking-score">0<span style="font-size:10px;color:#444">/${maxScore}</span></span>
+              </div>`).join('')}
+          </div>
+        </div>
+
+        <!-- Criteria legend -->
+        <div class="criteria-legend">
+          <div class="legend-title">CRITERIOS · PESOS</div>
+          ${rubric.map(c => `
+            <div class="legend-item">
+              <div class="legend-label">${c.label}</div>
+              <div class="legend-weight">×${c.weight} <span style="color:#333">= máx ${c.weight*5}</span></div>
+            </div>`).join('')}
+          <div class="legend-total">TOTAL MÁXIMO: ${maxScore} pts</div>
+        </div>
+      </aside>
+    </div>`;
+
+  window.filterFilms = function(query) {
+    document.querySelectorAll('.film-card').forEach(card => {
+      const title = card.querySelector('.film-title').textContent.toLowerCase();
+      card.style.display = title.includes(query.toLowerCase()) ? '' : 'none';
+    });
+  };
+
+  updateEvaluatedCount(films);
+}
+
+function renderFilmCard(film, rubric, maxScore, catColor, idx) {
+  const s = scores[film.id] || {};
+  const total = rubric.reduce((sum, c) => sum + ((s[c.id]||0)*c.weight), 0);
+  const isFinalized = s.finalized;
+
+  return `
+  <div class="film-card ${isFinalized?'finalized':''}" data-film="${film.id}" style="animation-delay:${idx*0.04}s">
+    <!-- Card header -->
+    <div class="film-card-header">
+      <div class="film-card-header-left">
+        <span class="film-type-badge" style="border-color:${catColor};color:${catColor}">${film.type}</span>
+        <span class="film-status ${isFinalized?'finalized':''}">${isFinalized?'✓ FINALIZADO':'PENDIENTE'}</span>
+      </div>
+      <div class="film-card-header-right">
+        <span class="film-total" data-total="${film.id}" style="color:${total>maxScore*0.8?'#00e5a0':total>maxScore*0.6?'#f59e0b':'#fff'}">${total}</span>
+        <span class="film-max">/${maxScore}</span>
+      </div>
+    </div>
+
+    <!-- Title row -->
+    <div class="film-title-row">
+      <h3 class="film-title">${film.title}</h3>
+      <div class="film-meta">${film.director} · ${film.duration}</div>
+    </div>
+
+    <!-- Progress bar -->
+    <div class="film-progress-track">
+      <div class="film-progress-fill" data-progress="${film.id}" style="width:${(total/maxScore)*100}%;background:${total>maxScore*0.8?'#00e5a0':total>maxScore*0.6?'#f59e0b':'#7c3aed'}"></div>
+    </div>
+
+    <!-- Scoring rows -->
+    <div class="scoring-grid">
+      ${rubric.map(c => `
+        <div class="scoring-row">
+          <div class="scoring-criterion">
+            <span class="criterion-name">${c.label}</span>
+            <span class="criterion-desc">${c.desc}</span>
+          </div>
+          <div class="scoring-controls" data-score="${film.id}-${c.id}">
+            ${[1,2,3,4,5].map(n => `
+              <button class="score-btn ${(s[c.id]||0)===n?'active':''}"
+                onclick="setScore('${film.id}','${c.id}',${n})"
+                style="--active-color:${n>=4?'#00e5a0':n===3?'#f59e0b':'#ef4444'}">${n}</button>`).join('')}
+            <span class="score-weight">×${c.weight}</span>
+            <span class="score-subtotal">${(s[c.id]||0)*c.weight}</span>
+          </div>
+        </div>`).join('')}
+    </div>
+
+    <!-- Notes -->
+    <div class="notes-section">
+      <label class="notes-label">OBSERVACIONES DEL JUEZ</label>
+      <textarea class="notes-textarea" data-notes="${film.id}"
+        placeholder="Notas sobre esta pieza para la deliberación..."
+        oninput="autoSaveNotes(this, '${film.id}')">${s.notes||''}</textarea>
+    </div>
+
+    <!-- Actions -->
+    <div class="card-actions">
+      <button class="btn-finalize ${isFinalized?'done':''}" onclick="finalizeEvaluation('${film.id}')">
+        ${isFinalized ? '✓ Evaluación finalizada' : 'Finalizar evaluación'}
+      </button>
+      <div class="card-actions-right">
+        <span class="last-saved" id="saved-${film.id}"></span>
+      </div>
+    </div>
+  </div>`;
+}
+
+function updateEvaluatedCount(films) {
+  let count = 0;
+  films.forEach(f => {
+    if (scores[f.id] && Object.values(scores[f.id]).some(v => typeof v==='number'&&v>0)) count++;
+  });
+  const el = $('evaluated-count');
+  if (el) el.textContent = count;
+}
+
+let saveTimers = {};
+window.autoSaveNotes = function(ta, filmId) {
+  clearTimeout(saveTimers[filmId]);
+  saveTimers[filmId] = setTimeout(() => window.saveNotes(filmId), 800);
+};
+
+function showSaveConfirm(filmId) {
+  const el = document.getElementById(`saved-${filmId}`);
+  if (el) {
+    el.textContent = '✓ Guardado';
+    el.style.color = '#00e5a0';
+    setTimeout(() => { el.textContent = ''; }, 2000);
+  }
+}
+</script>
+
+<style>
+/* ─── GLOBAL RESET & VARS ─────────────────────────────────────────────────── */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+:root {
+  --bg:       #0a0a0a;
+  --bg-1:     #111111;
+  --bg-2:     #161616;
+  --bg-3:     #1c1c1c;
+  --bg-4:     #222222;
+  --border:   #2a2a2a;
+  --border-2: #333333;
+  --text:     #ffffff;
+  --text-2:   #aaaaaa;
+  --text-3:   #666666;
+  --green:    #00e5a0;
+  --purple:   #7c3aed;
+  --amber:    #f59e0b;
+  --red:      #ef4444;
+  --cyan:     #06b6d4;
+  --radius:   10px;
+  --radius-sm:6px;
+  --font-sans:'Figtree', system-ui, sans-serif;
+  --font-mono:'JetBrains Mono', monospace;
+  --font-display:'Syne', system-ui, sans-serif;
+}
+
+html, body {
+  height: 100%; background: var(--bg);
+  color: var(--text); font-family: var(--font-sans);
+  overflow-x: hidden; font-size: 14px; line-height: 1.5;
+}
+
+#app { min-height: 100vh; }
+
+/* ─── SCROLLBAR ────────────────────────────────────────────────────────────── */
+::-webkit-scrollbar { width: 5px; }
+::-webkit-scrollbar-track { background: var(--bg); }
+::-webkit-scrollbar-thumb { background: #2a2a2a; border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: #444; }
+
+/* ─── LOGIN SCREEN ─────────────────────────────────────────────────────────── */
+.login-screen {
+  min-height: 100vh; display: flex; align-items: center; justify-content: center;
+  position: relative; overflow: hidden;
+}
+.login-bg {
+  position: absolute; inset: 0;
+  background: radial-gradient(ellipse 60% 50% at 50% 50%, rgba(0,229,160,0.06) 0%, transparent 70%),
+              radial-gradient(ellipse 40% 40% at 80% 20%, rgba(124,58,237,0.08) 0%, transparent 60%);
+}
+.login-card {
+  position: relative; z-index: 1;
+  background: var(--bg-2); border: 1px solid var(--border);
+  border-radius: 16px; padding: 48px 44px; width: 420px;
+  box-shadow: 0 0 80px rgba(0,0,0,0.6), 0 0 0 1px rgba(255,255,255,0.03);
+}
+.login-logo {
+  display: flex; align-items: center; gap: 8px; margin-bottom: 28px;
+}
+.login-logo .logo-text {
+  font-family: var(--font-display); font-size: 20px; font-weight: 800;
+  letter-spacing: 0.12em; color: var(--text);
+}
+.logo-dot {
+  width: 7px; height: 7px; border-radius: 50%; background: var(--green);
+  box-shadow: 0 0 8px var(--green); animation: pulse 2s ease-in-out infinite;
+}
+@keyframes pulse { 0%,100%{opacity:1;transform:scale(1)} 50%{opacity:0.6;transform:scale(0.8)} }
+
+.login-title {
+  font-family: var(--font-display); font-size: 26px; font-weight: 700;
+  color: var(--text); margin-bottom: 4px;
+}
+.login-subtitle {
+  font-family: var(--font-mono); font-size: 10px; letter-spacing: 0.15em;
+  color: var(--text-3); margin-bottom: 32px;
+}
+.demo-banner {
+  background: rgba(245,158,11,0.1); border: 1px solid rgba(245,158,11,0.2);
+  border-radius: var(--radius-sm); padding: 8px 12px;
+  font-family: var(--font-mono); font-size: 11px; color: var(--amber);
+  margin-bottom: 20px;
+}
+.form-label {
+  font-family: var(--font-mono); font-size: 10px; letter-spacing: 0.15em;
+  color: var(--text-3); display: block; margin-bottom: 10px;
+}
+.judge-selector { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 20px; }
+.judge-option {
+  display: flex; align-items: center; gap: 12px;
+  border: 1px solid var(--border-2); border-radius: var(--radius);
+  padding: 14px 16px; cursor: pointer;
+  transition: all 0.2s; background: var(--bg-3);
+}
+.judge-option:hover { border-color: #444; background: var(--bg-4); }
+.judge-option.selected {
+  border-color: var(--green); background: rgba(0,229,160,0.07);
+  box-shadow: 0 0 20px rgba(0,229,160,0.1);
+}
+.judge-id {
+  width: 36px; height: 36px; border-radius: 8px; background: var(--bg-4);
+  display: flex; align-items: center; justify-content: center;
+  font-family: var(--font-display); font-size: 16px; font-weight: 700;
+  flex-shrink: 0; transition: all 0.2s;
+}
+.judge-option.selected .judge-id { background: var(--green); color: #000; }
+.judge-name { font-size: 13px; font-weight: 600; display: block; }
+.judge-role { font-size: 10px; color: var(--text-3); font-family: var(--font-mono); display: block; }
+
+.btn-login {
+  width: 100%; height: 48px; border-radius: var(--radius);
+  background: var(--bg-3); border: 1px solid var(--border-2);
+  color: var(--text-3); font-family: var(--font-sans); font-size: 14px; font-weight: 500;
+  cursor: not-allowed; transition: all 0.25s;
+  display: flex; align-items: center; justify-content: center; gap: 8px;
+}
+.btn-login.ready {
+  background: var(--green); border-color: var(--green); color: #000;
+  cursor: pointer; box-shadow: 0 0 30px rgba(0,229,160,0.2);
+}
+.btn-login.ready:hover { transform: translateY(-1px); box-shadow: 0 0 40px rgba(0,229,160,0.3); }
+.login-badge {
+  font-family: var(--font-mono); font-size: 10px; color: var(--text-3);
+  text-align: center; margin-top: 24px; letter-spacing: 0.05em;
+}
+
+/* ─── TOPBAR ────────────────────────────────────────────────────────────────── */
+.topbar {
+  height: 52px; background: var(--bg-1); border-bottom: 1px solid var(--border);
+  display: flex; align-items: center; padding: 0 20px; gap: 24px;
+  position: sticky; top: 0; z-index: 100;
+  backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px);
+}
+.logo-text {
+  font-family: var(--font-display); font-size: 15px; font-weight: 800;
+  letter-spacing: 0.12em; color: var(--text);
+}
+.topbar-divider { color: var(--border-2); font-size: 18px; }
+.topbar-system {
+  font-family: var(--font-mono); font-size: 10px; letter-spacing: 0.15em;
+  color: var(--text-3);
+}
+.topbar-left { display: flex; align-items: center; gap: 10px; flex-shrink: 0; }
+.topbar-nav { display: flex; align-items: center; gap: 2px; flex: 1; overflow-x: auto; }
+.topbar-right { display: flex; align-items: center; gap: 10px; flex-shrink: 0; }
+
+.nav-tab {
+  display: flex; align-items: center; gap: 6px;
+  padding: 6px 14px; border-radius: 6px; border: none;
+  background: transparent; color: var(--text-3); cursor: pointer;
+  font-family: var(--font-sans); font-size: 13px; font-weight: 500;
+  white-space: nowrap; transition: all 0.15s;
+}
+.nav-tab:hover { color: var(--text); background: var(--bg-3); }
+.nav-tab.active { background: var(--bg-3); color: var(--text); border: 1px solid var(--border-2); }
+.nav-dot { width: 6px; height: 6px; border-radius: 50%; flex-shrink: 0; }
+
+.judge-badge {
+  font-family: var(--font-mono); font-size: 11px; font-weight: 600;
+  padding: 4px 10px; border-radius: 5px;
+  background: rgba(0,229,160,0.1); border: 1px solid rgba(0,229,160,0.2);
+  color: var(--green);
+}
+.live-badge {
+  display: flex; align-items: center; gap: 5px;
+  font-family: var(--font-mono); font-size: 10px; font-weight: 600;
+  padding: 4px 10px; border-radius: 5px; letter-spacing: 0.1em;
+}
+.live-badge.live { background: rgba(0,229,160,0.1); border: 1px solid rgba(0,229,160,0.2); color: var(--green); }
+.live-badge.demo { background: rgba(245,158,11,0.1); border: 1px solid rgba(245,158,11,0.2); color: var(--amber); }
+.live-dot { width: 5px; height: 5px; border-radius: 50%; background: currentColor; animation: pulse 1.5s ease-in-out infinite; }
+
+/* ─── MAIN CONTENT ──────────────────────────────────────────────────────────── */
+.main-content { min-height: calc(100vh - 52px); }
+
+/* ─── OVERVIEW ──────────────────────────────────────────────────────────────── */
+.overview-page { padding: 28px 28px 60px; max-width: 1400px; }
+
+.overview-hero {
+  display: flex; align-items: flex-end; justify-content: space-between;
+  padding: 32px 36px; background: var(--bg-2); border: 1px solid var(--border);
+  border-radius: 14px; margin-bottom: 20px;
+  background: linear-gradient(135deg, var(--bg-2) 0%, rgba(0,229,160,0.03) 100%);
+}
+.overview-label {
+  font-family: var(--font-mono); font-size: 10px; letter-spacing: 0.2em;
+  color: var(--green); margin-bottom: 8px;
+}
+.overview-title {
+  font-family: var(--font-display); font-size: 48px; font-weight: 800;
+  line-height: 1; color: var(--text); margin-bottom: 8px;
+}
+.overview-year { color: var(--green); }
+.overview-meta { font-size: 13px; color: var(--text-3); font-family: var(--font-mono); }
+
+.overview-big-metric { text-align: right; }
+.big-num { font-family: var(--font-display); font-size: 64px; font-weight: 800; color: var(--green); line-height: 1; }
+.big-sep { font-family: var(--font-display); font-size: 40px; color: var(--border-2); }
+.big-total { font-family: var(--font-display); font-size: 40px; color: var(--text-3); }
+.big-label { display: block; font-family: var(--font-mono); font-size: 9px; letter-spacing: 0.2em; color: var(--text-3); margin-top: 4px; }
+
+.overview-progress-bar {
+  margin-top: 8px; height: 3px; background: var(--bg-4); border-radius: 3px; overflow: hidden;
+}
+.overview-progress-fill { height: 100%; background: var(--green); border-radius: 3px; transition: width 0.4s ease; }
+
+.overview-cats {
+  display: grid; grid-template-columns: repeat(5, 1fr); gap: 10px; margin-bottom: 24px;
+}
+.cat-card {
+  background: var(--bg-2); border: 1px solid var(--border);
+  border-radius: 12px; padding: 20px; cursor: pointer;
+  transition: all 0.2s; position: relative; overflow: hidden;
+}
+.cat-card::before {
+  content: ''; position: absolute; bottom: 0; left: 0; right: 0; height: 2px;
+  background: var(--cat-color); transform: scaleX(0); transition: transform 0.2s;
+}
+.cat-card:hover { border-color: var(--cat-color); background: var(--bg-3); transform: translateY(-2px); }
+.cat-card:hover::before { transform: scaleX(1); }
+.cat-card-top { display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px; }
+.cat-dot { width: 8px; height: 8px; border-radius: 50%; }
+.cat-progress-txt { font-family: var(--font-mono); font-size: 10px; color: var(--text-3); }
+.cat-card-name { font-size: 13px; font-weight: 600; margin-bottom: 12px; line-height: 1.3; }
+.cat-card-bar { height: 2px; background: var(--bg-4); border-radius: 2px; margin-bottom: 12px; overflow: hidden; }
+.cat-card-fill { height: 100%; border-radius: 2px; transition: width 0.4s; }
+.cat-card-cta { font-family: var(--font-mono); font-size: 10px; color: var(--text-3); }
+
+.overview-section-label {
+  font-family: var(--font-mono); font-size: 10px; letter-spacing: 0.2em;
+  color: var(--text-3); margin-bottom: 12px;
+}
+.overview-films-grid {
+  display: flex; flex-wrap: wrap; gap: 6px;
+}
+.overview-film-pill {
+  display: flex; align-items: center; gap: 8px;
+  padding: 7px 12px; border-radius: 6px;
+  background: var(--bg-2); border: 1px solid var(--border);
+  transition: all 0.15s; font-size: 12px;
+}
+.overview-film-pill.evaluated { border-color: rgba(0,229,160,0.3); background: rgba(0,229,160,0.04); }
+.pill-type {
+  font-family: var(--font-mono); font-size: 9px; font-weight: 600;
+  padding: 2px 5px; border-radius: 3px;
+}
+.pill-type.pill-2d { background: rgba(0,229,160,0.15); color: var(--green); }
+.pill-type.pill-3d { background: rgba(124,58,237,0.15); color: #a78bfa; }
+.pill-type.pill-internacional { background: rgba(6,182,212,0.15); color: var(--cyan); }
+.pill-check { color: var(--green); font-size: 11px; }
+.pill-pending { color: var(--text-3); }
+
+/* ─── CATEGORY VIEW ─────────────────────────────────────────────────────────── */
+.cat-header {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 24px 28px; background: var(--bg-1); border-bottom: 1px solid var(--border);
+}
+.cat-header-badge {
+  display: inline-block; padding: 4px 10px; border-radius: 4px;
+  border: 1px solid; font-family: var(--font-mono); font-size: 10px;
+  font-weight: 600; letter-spacing: 0.12em; margin-bottom: 8px;
+}
+.cat-header-title { font-family: var(--font-display); font-size: 32px; font-weight: 800; margin-bottom: 4px; }
+.cat-header-meta { font-size: 12px; color: var(--text-3); font-family: var(--font-mono); }
+.cat-score-overview { display: flex; align-items: baseline; gap: 4px; }
+.cat-evaluated-count { font-family: var(--font-display); font-size: 48px; font-weight: 800; color: var(--cat-color); line-height: 1; }
+.cat-evaluated-label { font-family: var(--font-mono); font-size: 11px; color: var(--text-3); line-height: 1.3; }
+
+.cat-layout {
+  display: grid; grid-template-columns: 1fr 280px;
+  gap: 0; height: calc(100vh - 148px); overflow: hidden;
+}
+.films-column { overflow-y: auto; padding: 16px 20px; }
+
+.search-bar {
+  display: flex; align-items: center; gap: 10px;
+  background: var(--bg-2); border: 1px solid var(--border);
+  border-radius: 8px; padding: 0 14px; margin-bottom: 12px;
+  height: 40px;
+}
+.search-input {
+  flex: 1; background: none; border: none; outline: none;
+  font-family: var(--font-sans); font-size: 13px; color: var(--text);
+}
+.search-input::placeholder { color: var(--text-3); }
+.films-list { display: flex; flex-direction: column; gap: 10px; }
+
+/* ─── FILM CARD ─────────────────────────────────────────────────────────────── */
+.film-card {
+  background: var(--bg-2); border: 1px solid var(--border);
+  border-radius: var(--radius); overflow: hidden;
+  transition: border-color 0.2s, box-shadow 0.2s;
+  animation: slideIn 0.3s ease both;
+}
+@keyframes slideIn {
+  from { opacity: 0; transform: translateY(10px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+.film-card:hover { border-color: var(--border-2); }
+.film-card.finalized { border-color: rgba(0,229,160,0.2); box-shadow: 0 0 20px rgba(0,229,160,0.05); }
+
+.film-card-header {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 12px 16px 0;
+}
+.film-card-header-left { display: flex; align-items: center; gap: 8px; }
+.film-type-badge {
+  font-family: var(--font-mono); font-size: 9px; font-weight: 600;
+  padding: 2px 7px; border-radius: 3px; border: 1px solid;
+  letter-spacing: 0.08em;
+}
+.film-status {
+  font-family: var(--font-mono); font-size: 9px; letter-spacing: 0.12em;
+  color: var(--text-3);
+}
+.film-status.finalized { color: var(--green); }
+.film-card-header-right { display: flex; align-items: baseline; gap: 3px; }
+.film-total { font-family: var(--font-display); font-size: 28px; font-weight: 800; line-height: 1; transition: color 0.3s; }
+.film-max { font-family: var(--font-mono); font-size: 11px; color: var(--text-3); }
+
+.film-title-row { padding: 8px 16px 10px; }
+.film-title { font-family: var(--font-display); font-size: 18px; font-weight: 700; margin-bottom: 2px; }
+.film-meta { font-size: 11px; color: var(--text-3); font-family: var(--font-mono); }
+
+.film-progress-track {
+  height: 2px; background: var(--bg-4); margin: 0 16px 0;
+}
+.film-progress-fill { height: 100%; border-radius: 2px; transition: width 0.4s ease, background 0.3s; }
+
+/* ─── SCORING GRID ──────────────────────────────────────────────────────────── */
+.scoring-grid { padding: 12px 16px; display: flex; flex-direction: column; gap: 6px; }
+
+.scoring-row {
+  display: flex; align-items: center; justify-content: space-between; gap: 16px;
+  padding: 8px 10px; border-radius: 6px; background: var(--bg-3);
+  border: 1px solid transparent; transition: border-color 0.15s;
+}
+.scoring-row:hover { border-color: var(--border); }
+
+.scoring-criterion { flex: 1; min-width: 0; }
+.criterion-name { font-size: 12px; font-weight: 600; display: block; margin-bottom: 1px; }
+.criterion-desc { font-size: 10px; color: var(--text-3); font-family: var(--font-mono); display: block; }
+
+.scoring-controls { display: flex; align-items: center; gap: 4px; flex-shrink: 0; }
+
+.score-btn {
+  width: 32px; height: 28px; border-radius: 5px;
+  border: 1px solid var(--border-2); background: var(--bg-4);
+  color: var(--text-3); font-family: var(--font-mono); font-size: 12px; font-weight: 500;
+  cursor: pointer; transition: all 0.12s;
+}
+.score-btn:hover { border-color: #555; color: var(--text); background: var(--bg-3); }
+.score-btn.active {
+  background: var(--active-color, var(--green)); border-color: var(--active-color, var(--green));
+  color: #000; box-shadow: 0 0 10px rgba(0,229,160,0.2);
+}
+
+.score-weight {
+  font-family: var(--font-mono); font-size: 10px; color: var(--text-3);
+  margin-left: 4px; min-width: 20px;
+}
+.score-subtotal {
+  font-family: var(--font-mono); font-size: 12px; font-weight: 600; color: var(--text-2);
+  min-width: 24px; text-align: right;
+}
+
+/* ─── NOTES ─────────────────────────────────────────────────────────────────── */
+.notes-section { padding: 0 16px 12px; }
+.notes-label {
+  font-family: var(--font-mono); font-size: 9px; letter-spacing: 0.18em;
+  color: var(--text-3); display: block; margin-bottom: 6px;
+}
+.notes-textarea {
+  width: 100%; background: var(--bg-3); border: 1px solid var(--border);
+  border-radius: 6px; padding: 10px 12px; color: var(--text);
+  font-family: var(--font-sans); font-size: 12px; resize: vertical;
+  min-height: 60px; outline: none; transition: border-color 0.15s; line-height: 1.5;
+}
+.notes-textarea:focus { border-color: var(--border-2); }
+.notes-textarea::placeholder { color: var(--text-3); }
+
+/* ─── CARD ACTIONS ──────────────────────────────────────────────────────────── */
+.card-actions {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 10px 16px 14px; gap: 10px;
+}
+.btn-finalize {
+  flex: 1; height: 36px; border-radius: 6px;
+  background: var(--purple); border: 1px solid rgba(124,58,237,0.5);
+  color: white; font-family: var(--font-sans); font-size: 12px; font-weight: 600;
+  cursor: pointer; transition: all 0.15s;
+}
+.btn-finalize:hover { background: #6d28d9; box-shadow: 0 0 20px rgba(124,58,237,0.3); }
+.btn-finalize.done { background: rgba(0,229,160,0.1); border-color: rgba(0,229,160,0.3); color: var(--green); cursor: default; }
+.card-actions-right { display: flex; align-items: center; }
+.last-saved { font-family: var(--font-mono); font-size: 10px; color: var(--text-3); }
+
+/* ─── RANKING SIDEBAR ───────────────────────────────────────────────────────── */
+.ranking-sidebar {
+  border-left: 1px solid var(--border); background: var(--bg-1);
+  overflow-y: auto; padding: 16px;
+  display: flex; flex-direction: column; gap: 16px;
+}
+.ranking-panel { }
+.ranking-header {
+  display: flex; align-items: center; justify-content: space-between;
+  margin-bottom: 12px;
+}
+.ranking-title { font-family: var(--font-mono); font-size: 9px; letter-spacing: 0.18em; color: var(--text-3); }
+.ranking-cat { font-family: var(--font-mono); font-size: 9px; font-weight: 600; }
+.ranking-list { display: flex; flex-direction: column; gap: 4px; }
+.ranking-item {
+  display: flex; align-items: center; gap: 10px;
+  padding: 8px 10px; border-radius: 6px; background: var(--bg-2);
+  border: 1px solid transparent; transition: all 0.15s;
+}
+.ranking-item.leader { border-color: rgba(0,229,160,0.2); background: rgba(0,229,160,0.04); }
+.ranking-pos { font-family: var(--font-mono); font-size: 11px; color: var(--text-3); min-width: 16px; }
+.ranking-name { font-size: 11px; font-weight: 500; flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ranking-score { font-family: var(--font-mono); font-size: 13px; font-weight: 600; flex-shrink: 0; }
+
+.criteria-legend {
+  background: var(--bg-2); border: 1px solid var(--border);
+  border-radius: var(--radius); padding: 14px;
+}
+.legend-title { font-family: var(--font-mono); font-size: 9px; letter-spacing: 0.18em; color: var(--text-3); margin-bottom: 10px; }
+.legend-item { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 8px; gap: 8px; }
+.legend-label { font-size: 11px; font-weight: 500; flex: 1; line-height: 1.3; }
+.legend-weight { font-family: var(--font-mono); font-size: 10px; color: var(--green); flex-shrink: 0; }
+.legend-total {
+  font-family: var(--font-mono); font-size: 10px; font-weight: 600;
+  color: var(--text-2); border-top: 1px solid var(--border);
+  padding-top: 8px; margin-top: 4px;
+}
+
+/* ─── RESPONSIVE ────────────────────────────────────────────────────────────── */
+@media (max-width: 1100px) {
+  .overview-cats { grid-template-columns: repeat(3, 1fr); }
+  .cat-layout { grid-template-columns: 1fr; }
+  .ranking-sidebar { display: none; }
+}
+@media (max-width: 768px) {
+  .overview-hero { flex-direction: column; gap: 20px; }
+  .overview-cats { grid-template-columns: 1fr 1fr; }
+  .topbar-system { display: none; }
+  .topbar-nav { gap: 0; }
+  .nav-tab { padding: 6px 8px; font-size: 12px; }
+  .login-card { width: calc(100vw - 32px); padding: 32px 24px; }
+}
+</style>
+
+<div id="app"></div>
+</html>
+HTMLEOF
