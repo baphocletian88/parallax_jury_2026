@@ -463,21 +463,6 @@ function buildPlatform(demoMode) {
     else renderCategoryView(tab);
   };
 
-  window.setScore = async function(filmId, criteriaId, value) {
-    if (!scores[filmId]) scores[filmId] = {};
-    scores[filmId][criteriaId] = value;
-
-    // Update UI immediately
-    const el = document.querySelector(`[data-score="${filmId}-${criteriaId}"]`);
-    if (el) el.parentElement.parentElement.querySelectorAll('.score-btn').forEach((b,i) => {
-      b.classList.toggle('active', i+1 === value);
-    });
-
-    updateFilmTotal(filmId);
-    persistScores(); // ← save to localStorage on every score change
-    if (!demoMode && db) await saveToFirebase(filmId, criteriaId, value);
-    updateRankingPanel();
-  };
 
   window.saveNotes = async function(filmId) {
     const ta = document.querySelector(`[data-notes="${filmId}"]`);
@@ -690,7 +675,7 @@ function updateRankingPanel() {
   const cat = CATEGORIES[currentCategory];
   if (!cat) return;
 
-  const allFilms = getAllFilmsForView();
+  const allFilms = getAllFilmsForCategory(currentCategory);
   const ranked = allFilms.map(f => ({
     ...f,
     score: getFilmScoreLocal(f.id),
