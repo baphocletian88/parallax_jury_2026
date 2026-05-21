@@ -6,9 +6,7 @@
 <title>PARALLAX · Sistema de Evaluación · Jurado</title>
 
 <!-- Fonts -->
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;500;600;700;800&family=JetBrains+Mono:wght@300;400;500;600&family=Figtree:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
 
 <!-- Firebase CDN -->
 <script type="module">
@@ -34,24 +32,187 @@ let unsubscribers = [];
 // ─── DATA MODEL ──────────────────────────────────────────────────────────────
 const FILMS = {
   '2d': [
-    { id: 'afterlight', title: 'Afterlight',           director: 'UDEM',  duration: '— min', type: '2D' },
-    { id: 'ronnie',     title: 'Ronnie en la Luna',    director: 'UDEM',  duration: '10 min', type: '2D' },
-    { id: 'battle',     title: 'Battle of the Batter', director: 'UDEM',  duration: '7 min',  type: '2D' },
-    { id: 'flama',      title: 'Flama',                director: 'UDEM',  duration: '6 min',  type: '2D' },
-    { id: 'malita',     title: 'Malita pa Ti',          director: 'UDEM',  duration: '11 min', type: '2D' },
-    { id: 'beatbox',    title: 'Beatbox',               director: 'UDEM',  duration: '5 min',  type: '2D' },
-    { id: 'freshtzu',   title: 'Freshtzu',              director: 'UDEM',  duration: '4 min',  type: '2D' },
-    { id: 'otterside',  title: 'Otterside',             director: 'UDEM',  duration: '7 min',  type: '2D' },
+    // ── Battle of the Batter ──────────────────────────────────────────────────────
+    { id: 'battle', title: 'Battle of the Batter',
+      director: 'Michelle Aseret Díaz Sánchez',
+      duration: '7 min', type: '2D',
+      poster: 'https://parallaxfestival.com/posters/battle-of-the-batter.jpg',
+      synopsis: 'Dos hermanas compiten por hacer el cupcake perfecto, pero su hermano menor convierte el reto en un caos dulce para evitar elegir a una ganadora.',
+      crew: [
+        { name: 'Michelle Aseret Díaz Sánchez',  role: 'Dirección',  avatar: 'https://parallaxfestival.com/team-laed/michelle-aseret-diaz-sanchez.jpg' },
+        { name: 'Natalia Sofía Ríos Garza',       role: 'Animación',  avatar: 'https://parallaxfestival.com/team-laed/natalia-sofia-rios-garza.jpg' },
+        { name: 'Xenia Fernanda Muñiz Siller',    role: 'Animación',  avatar: 'https://parallaxfestival.com/team-laed/xenia-fernanda-muniz-siller.jpg' },
+        { name: 'Caleb Ilan Martínez Ardila',     role: 'Animación',  avatar: 'https://parallaxfestival.com/team-laed/caleb-ilan-martinez-ardila.jpg' },
+        { name: 'Nadia Victoria Espinosa Tenorio',role: 'Animación',  avatar: 'https://parallaxfestival.com/team-laed/nadia-victoria-espinosa-tenorio.jpg' },
+      ]
+    },
+    // ── Beat Box King (= Beatbox) ─────────────────────────────────────────────────
+    { id: 'beatbox', title: 'Beat Box King',
+      director: 'Javier De la Garza Treviño',
+      duration: '6 min', type: '2D',
+      poster: 'https://parallaxfestival.com/posters/beat-box-king.jpg',
+      synopsis: 'Tape es un joven boxeador que debe ganar una pelea imposible para conseguir el título de campeón y la aprobación de su estricto coach.',
+      crew: [
+        { name: 'Javier De la Garza Treviño',       role: 'Dirección',  avatar: 'https://parallaxfestival.com/team-laed/javier-de-la-garza-trevino.jpg' },
+        { name: 'Jesús Maximiliano Soto Gamboa',    role: 'Animación',  avatar: 'https://parallaxfestival.com/team-laed/jesus-maximiliano-soto-gamboa.jpg' },
+        { name: 'Carla Roberta Gil Tinoco',         role: 'Animación',  avatar: '' },
+        { name: 'Isaac Boone Patlán',               role: 'Animación',  avatar: '' },
+        { name: 'Isaac Alejandro Arredondo Neri',   role: 'Animación',  avatar: '' },
+        { name: 'Raúl Torres Camarillo',            role: 'Animación',  avatar: '' },
+      ]
+    },
+    // ── Flama ─────────────────────────────────────────────────────────────────────
+    { id: 'flama', title: 'Flama',
+      director: 'Ana Fernanda Llano Muñoz',
+      duration: '6 min', type: '2D',
+      poster: 'https://parallaxfestival.com/posters/flama.jpg',
+      synopsis: 'Un hombre que ha dejado que sus sueños se apaguen por culpa de sus decisiones decide dar un giro de 180 grados a su vida, antes de que su llama se apague para siempre.',
+      crew: [
+        { name: 'Ana Fernanda Llano Muñoz',   role: 'Dirección',          avatar: 'https://parallaxfestival.com/team-laed/ana-fernanda-llano-munoz.jpg' },
+        { name: 'Miranda García Rodríguez',   role: 'Diseño de Personajes',avatar: 'https://parallaxfestival.com/team-laed/miranda-garcia-rodriguez.jpg' },
+        { name: 'Guillermo Enriquez Ibave',   role: 'Postproducción',      avatar: 'https://parallaxfestival.com/team-laed/guillermo-enriquez-ibave.jpg' },
+        { name: 'Ángel Emilio Martínez Bedia',role: 'Subdirección',        avatar: 'https://parallaxfestival.com/team-laed/angel-emilio-martinez-bedia.jpg' },
+        { name: 'Valeria Rodríguez',          role: 'Dirección de Arte',   avatar: 'https://parallaxfestival.com/team-laed/valeria-rodriguez.jpg' },
+      ]
+    },
+    // ── Freshtzu ──────────────────────────────────────────────────────────────────
+    { id: 'freshtzu', title: 'Freshtzu',
+      director: 'Annayram Márquez García',
+      duration: '5 min', type: '2D',
+      poster: 'https://parallaxfestival.com/posters/freshtzu.jpg',
+      synopsis: 'Cuando un oso solitario pierde la esperanza en las personas, debe enfrentarse a su egoísmo mediante sus luchas internas.',
+      crew: [
+        { name: 'Annayram Márquez García',       role: 'Dirección', avatar: 'https://parallaxfestival.com/team-laed/annayram-marquez-garcia.jpg' },
+        { name: 'Maryanna Márquez García',       role: 'Animación', avatar: 'https://parallaxfestival.com/team-laed/maryanna-marquez-garcia.jpg' },
+        { name: 'Valentina Deandar Tamez',       role: 'Animación', avatar: '' },
+        { name: 'Alan Gabriel Caballero Lozano', role: 'Animación', avatar: 'https://parallaxfestival.com/team-laed/alan-gabriel-caballero-lozano.jpg' },
+      ]
+    },
+    // ── Malita Pa ti ──────────────────────────────────────────────────────────────
+    { id: 'malita', title: 'Malita Pa Ti',
+      director: 'Emilia Galván López',
+      duration: '12 min', type: '2D',
+      poster: 'https://parallaxfestival.com/posters/malitapati.jpg',
+      synopsis: 'Cuando la ciudad pierde a su heroína en un secuestro, la villana debe rescatar a su mayor rival — porque si no, perderá al amor de su vida.',
+      crew: [
+        { name: 'Emilia Galván López',           role: 'Dirección', avatar: 'https://parallaxfestival.com/team-laed/emilia-galvan-lopez.jpg' },
+        { name: 'Gael Antonio Domínguez Huerta', role: 'Animación', avatar: 'https://parallaxfestival.com/team-laed/gael-antonio-dominguez-huerta.jpg' },
+        { name: 'Zaira Fátima Garduño Herrera',  role: 'Animación', avatar: 'https://parallaxfestival.com/team-laed/zaira-fatima-garduno-herrera.jpg' },
+        { name: 'Leslie Yazmín Guevara Tolentino',role:'Animación', avatar: 'https://parallaxfestival.com/team-laed/leslie-yazmin-guevara-tolentino.jpg' },
+        { name: 'Constanza Abril Medrano Cruz',  role: 'Animación', avatar: 'https://parallaxfestival.com/team-laed/constanza-abril-medrano-cruz.jpg' },
+      ]
+    },
+    // ── Otter Side ────────────────────────────────────────────────────────────────
+    { id: 'otterside', title: 'Otter Side',
+      director: 'Oswaldo Andrés Silvas Alcaraz',
+      duration: '7 min', type: '2D',
+      poster: 'https://parallaxfestival.com/posters/otterside.jpg',
+      synopsis: 'Cuando una nutria apática no escucha advertencias, las circunstancias la van a orillar a aprender a ver la vida con la imagen completa.',
+      crew: [
+        { name: 'Oswaldo Andrés Silvas Alcaraz', role: 'Dirección', avatar: 'https://parallaxfestival.com/team-laed/oswaldo-andres-silvas-alcaraz.jpg' },
+        { name: 'Samantha Cantú Morales',        role: 'Animación', avatar: 'https://parallaxfestival.com/team-laed/samantha-cantu-morales.jpg' },
+        { name: 'Carlos Andrés Suárez Delgado',  role: 'Animación', avatar: 'https://parallaxfestival.com/team-laed/carlos-andres-suarez-delgado.jpg' },
+        { name: 'Rafael Savani Alcantar Palmer', role: 'Animación', avatar: '' },
+        { name: 'Luis Fernando Lozano Cantú',    role: 'Animación', avatar: 'https://parallaxfestival.com/team-laed/luis-fernando-lozano-cantu.jpg' },
+        { name: 'Raúl Maldonado Villarreal',     role: 'Animación', avatar: 'https://parallaxfestival.com/team-laed/raul-maldonado-villarreal.jpg' },
+        { name: 'Jorge Gómez Sánchez',           role: 'Animación', avatar: 'https://parallaxfestival.com/team-laed/jorge-gomez-sanchez.jpg' },
+      ]
+    },
+    // ── Ronnie en la Luna ─────────────────────────────────────────────────────────
+    { id: 'ronnie', title: 'Ronnie en la Luna',
+      director: 'Andrés Rosiles Maldonado',
+      duration: '10 min', type: '2D',
+      poster: 'https://parallaxfestival.com/posters/ronnie.jpg',
+      synopsis: 'En un mundo crudo, Ronnie, un conejo salvado por un niño que se volvió su dueño, ahora tiene que proteger y salvar a su dueño de un mal que amenaza su vida.',
+      crew: [
+        { name: 'Andrés Rosiles Maldonado',        role: 'Dirección', avatar: 'https://parallaxfestival.com/team-laed/andres-rosiles-maldonado.jpg' },
+        { name: 'Carlos Alonso Serroque Palacios', role: 'Animación', avatar: 'https://parallaxfestival.com/team-laed/carlos-alonso-serroque-palacios.jpg' },
+        { name: 'Victoria Nohemí Peña Ceseña',     role: 'Animación', avatar: '' },
+        { name: 'Daniel García Díaz',              role: 'Animación', avatar: '' },
+      ]
+    },
   ],
   '3d': [
-    { id: 'contact',   title: 'Contact',              director: 'UDEM',  duration: '6 min',  type: '3D' },
-    { id: 'blockhead', title: 'Blockhead',             director: 'UDEM',  duration: '4 min',  type: '3D' },
-    { id: 'lonestar',  title: 'Lone Star Store',       director: 'UDEM',  duration: '10 min', type: '3D' },
-    { id: 'rex',       title: 'Rex',                   director: 'UDEM',  duration: '13 min', type: '3D' },
-    { id: 'recuerda',  title: 'Recuerda que Te Amo',   director: 'UDEM',  duration: '6 min',  type: '3D' },
-    { id: 'space',     title: 'I Need Some Space',     director: 'UDEM',  duration: '6 min',  type: '3D' },
-    { id: 'giro',      title: 'Un Giro en el Agua',    director: 'UDEM',  duration: '6 min',  type: '3D' },
-    { id: 'escamas',   title: 'Escamas',               director: 'UDEM',  duration: '7 min',  type: '3D' },
+    // ── BLOCKHEAD ─────────────────────────────────────────────────────────────────
+    { id: 'blockhead', title: 'Blockhead',
+      director: 'Fernando Manuel Cárdenas Segura',
+      duration: '4 min', type: '3D',
+      poster: 'https://parallaxfestival.com/posters/blockhead.jpg',
+      synopsis: 'Una cruda estatua de madera cobra vida en una cabaña abandonada, y gradualmente descubre sus alrededores y sus habilidades.',
+      crew: [
+        { name: 'Fernando Manuel Cárdenas Segura', role: 'Dirección', avatar: 'https://parallaxfestival.com/team-laed/fernando-manuel-cardenas-segura.jpg' },
+      ]
+    },
+    // ── CONTACT ───────────────────────────────────────────────────────────────────
+    { id: 'contact', title: 'Contact',
+      director: 'Gonzalo Ramos Ochoa',
+      duration: '6 min', type: '3D',
+      poster: 'https://parallaxfestival.com/posters/contact.jpg',
+      synopsis: 'Décadas después de que un rover soviético captara brevemente algo extraordinario en Marte, una misión secreta es enviada para descubrir la verdad.',
+      crew: [
+        { name: 'Gonzalo Ramos Ochoa', role: 'Dirección', avatar: 'https://parallaxfestival.com/team-laed/gonzalo-ramos-ochoa.jpg' },
+      ]
+    },
+    // ── ESCAMAS ───────────────────────────────────────────────────────────────────
+    { id: 'escamas', title: 'Escamas',
+      director: 'Julieta Hernández Sada',
+      duration: '7 min', type: '3D',
+      poster: 'https://parallaxfestival.com/posters/escamas.jpg',
+      synopsis: 'En una pequeña cabaña en la Antártida, Roberto, un investigador raro y solitario, adopta a Pez, un pez anaranjado con cualidades extrañas.',
+      crew: [
+        { name: 'Julieta Hernández Sada', role: 'Dirección', avatar: 'https://parallaxfestival.com/team-laed/julieta-hernandez-sada.jpg' },
+      ]
+    },
+    // ── I Need Some Space ─────────────────────────────────────────────────────────
+    { id: 'space', title: 'I Need Some Space',
+      director: 'Angela Aguirre',
+      duration: '6 min', type: '3D',
+      poster: 'https://parallaxfestival.com/posters/i-need-some-space.jpg',
+      synopsis: 'Malai, una alienígena que vive en un planeta solitario, ve todo cambiar cuando Olivia irrumpe accidentalmente en su órbita y destruye aquello que más atesora.',
+      crew: [
+        { name: 'Angela Aguirre', role: 'Dirección', avatar: 'https://parallaxfestival.com/team-laed/angela-aguirre.jpg' },
+      ]
+    },
+    // ── Lone Star Store ───────────────────────────────────────────────────────────
+    { id: 'lonestar', title: 'Lone Star Store',
+      director: 'Elizabeth Abigail Aguirre Calderón',
+      duration: '10 min', type: '3D',
+      poster: 'https://parallaxfestival.com/posters/lone-star-store.jpg',
+      synopsis: 'Cade, un chico que cubre el turno nocturno por su amigo, enfrentará un encuentro extraño durante la noche que lo llevará a la decisión de abandonar o quedarse en la tienda.',
+      crew: [
+        { name: 'Elizabeth Abigail Aguirre Calderón', role: 'Dirección', avatar: 'https://parallaxfestival.com/team-laed/elizabeth-abigail-aguirre-calderon.jpg' },
+      ]
+    },
+    // ── Recuerda que te amo ───────────────────────────────────────────────────────
+    { id: 'recuerda', title: 'Recuerda que Te Amo',
+      director: 'Isabella Guadalupe Puente Cantú',
+      duration: '6 min', type: '3D',
+      poster: 'https://parallaxfestival.com/posters/recuerda-que-te-amo.jpg',
+      synopsis: 'En los 80\'s, Sandy es una enfermera que cuida de Meli, una señora con Alzheimer que vive entre recuerdos de los 50\'s y el presente.',
+      crew: [
+        { name: 'Isabella Guadalupe Puente Cantú', role: 'Dirección', avatar: 'https://parallaxfestival.com/team-laed/isabella-guadalupe-puente-cantu.jpg' },
+      ]
+    },
+    // ── Rex ───────────────────────────────────────────────────────────────────────
+    { id: 'rex', title: 'Rex',
+      director: 'Ángel Iván Torres Arévalo',
+      duration: '13 min', type: '3D',
+      poster: 'https://parallaxfestival.com/posters/rex.jpg',
+      synopsis: 'REX, el depredador más temido del cretácico, recibe recuerdos de su pasado que lo marcaron para siempre — aquellos que desearía olvidar por completo.',
+      crew: [
+        { name: 'Ángel Iván Torres Arévalo', role: 'Dirección', avatar: 'https://parallaxfestival.com/team-laed/angel-torres-arevalo.jpg' },
+      ]
+    },
+    // ── Un Giro bajo el Agua ──────────────────────────────────────────────────────
+    { id: 'giro', title: 'Un Giro en el Agua',
+      director: 'Padme Aaralyn Dominguez Gurrola',
+      duration: '6 min', type: '3D',
+      poster: 'https://parallaxfestival.com/posters/un-giro-en-el-agua.jpg',
+      synopsis: 'En un bosque tranquilo, un pequeño gatito hambriento sale en busca de comida junto al río — descubrirá un mundo salvaje lleno de peligros.',
+      crew: [
+        { name: 'Padme Aaralyn Dominguez Gurrola', role: 'Dirección', avatar: '' },
+      ]
+    },
   ],
   'intl': [
     { id: 'mascara',    title: 'La Máscara de la Muerte Roja', director: 'UDIT · España',  duration: '— min', type: 'Internacional' },
@@ -386,6 +547,9 @@ function updateRankingPanel() {
       ${ranked.map((f, i) => `
         <div class="ranking-item ${i===0&&f.score>0?'leader':''}">
           <span class="ranking-pos">${i+1}</span>
+          ${f.poster ? `<img src="${f.poster}" alt="${f.title}" loading="lazy"
+            style="width:32px;height:22px;object-fit:cover;border-radius:3px;flex-shrink:0"
+            onerror="this.style.display='none'">` : ''}
           <span class="ranking-name">${f.title}</span>
           <span class="ranking-score" style="color:${i===0&&f.score>0?cat.color:'#888'}">${f.score}<span style="font-size:10px;color:#444">/${f.max}</span></span>
         </div>`).join('')}
@@ -436,7 +600,7 @@ function renderOverview() {
         <div class="overview-hero-left">
           <div class="overview-label">SISTEMA DE EVALUACIÓN · ${judgeName.toUpperCase()}</div>
           <h1 class="overview-title">Parallax <span class="overview-year">2026</span></h1>
-          <div class="overview-meta">22 de mayo · Cineteca Nuevo León · Monterrey, N.L.</div>
+          <div class="overview-meta">22 de mayo · Teatro UDEM · Monterrey, N.L.</div>
         </div>
         <div class="overview-hero-right">
           <div class="overview-big-metric">
@@ -573,62 +737,111 @@ function renderFilmCard(film, rubric, maxScore, catColor, idx) {
   const s = scores[film.id] || {};
   const total = rubric.reduce((sum, c) => sum + ((s[c.id]||0)*c.weight), 0);
   const isFinalized = s.finalized;
+  const tc = total>maxScore*0.8?'#00e5a0':total>maxScore*0.6?'#f59e0b':'#fff';
+  const pc = total>maxScore*0.8?'#00e5a0':total>maxScore*0.6?'#f59e0b':'#7c3aed';
+
+  // Crew chips — avatars larger (32px), max 5 shown
+  const crewHTML = (film.crew && film.crew.length > 0)
+    ? `<div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin-top:6px">
+        ${film.crew.slice(0,5).map(c => `
+          <div style="display:flex;align-items:center;gap:7px;background:#1a1a1a;border:1px solid #2a2a2a;border-radius:6px;padding:5px 10px 5px 5px;transition:border-color .15s" onmouseenter="this.style.borderColor='#3a3a3a'" onmouseleave="this.style.borderColor='#2a2a2a'">
+            ${c.avatar
+              ? `<img src="${c.avatar}" alt="${c.name}" loading="lazy"
+                  style="width:28px;height:28px;border-radius:50%;object-fit:cover;flex-shrink:0;border:1px solid #333"
+                  onerror="this.outerHTML='<div style=\\'width:28px;height:28px;border-radius:50%;background:#292929;border:1px solid #333;flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:11px;color:#666\\'>${c.name.charAt(0)}</div>'">`
+              : `<div style="width:28px;height:28px;border-radius:50%;background:#292929;border:1px solid #333;flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:11px;color:#555">${c.name.charAt(0)}</div>`
+            }
+            <div style="display:flex;flex-direction:column;gap:0px;min-width:0">
+              <span style="font-size:12px;font-weight:600;color:#ccc;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:120px;line-height:1.3" title="${c.name}">${c.name.split(' ')[0]} ${c.name.split(' ').slice(-1)[0]}</span>
+              <span style="font-size:10px;color:#555;font-family:'JetBrains Mono',monospace;line-height:1.2">${c.role}</span>
+            </div>
+          </div>`).join('')}
+        ${film.crew.length > 5 ? `<span style="font-size:11px;color:#444;font-family:'JetBrains Mono',monospace;align-self:center">+${film.crew.length-5}</span>` : ''}
+      </div>`
+    : '';
 
   return `
   <div class="film-card ${isFinalized?'finalized':''}" data-film="${film.id}" style="animation-delay:${idx*0.04}s">
-    <!-- Card header -->
-    <div class="film-card-header">
-      <div class="film-card-header-left">
-        <span class="film-type-badge" style="border-color:${catColor};color:${catColor}">${film.type}</span>
-        <span class="film-status ${isFinalized?'finalized':''}">${isFinalized?'✓ FINALIZADO':'PENDIENTE'}</span>
+
+    <!-- ─ HORIZONTAL HEADER: poster left + info right ─ -->
+    <div style="display:flex;align-items:stretch;gap:0;border-bottom:1px solid #222">
+
+      <!-- Poster — compact, fixed width -->
+      <div style="width:88px;flex-shrink:0;position:relative;overflow:hidden;background:#111">
+        ${film.poster
+          ? `<img src="${film.poster}" alt="${film.title}" loading="lazy"
+              style="width:100%;height:100%;object-fit:cover;display:block;transition:transform .4s ease"
+              onerror="this.parentElement.style.background='#161616'">`
+          : `<div style="width:100%;height:100%;display:flex;align-items:center;justify-content:center;color:#2a2a2a;font-size:22px">🎬</div>`
+        }
+        <!-- type pill over poster -->
+        <div style="position:absolute;bottom:5px;left:5px">
+          <span style="font-family:'JetBrains Mono',monospace;font-size:8px;font-weight:700;padding:2px 5px;border-radius:3px;letter-spacing:.06em;color:${catColor};background:rgba(0,0,0,.75);border:1px solid ${catColor}40">${film.type}</span>
+        </div>
       </div>
-      <div class="film-card-header-right">
-        <span class="film-total" data-total="${film.id}" style="color:${total>maxScore*0.8?'#00e5a0':total>maxScore*0.6?'#f59e0b':'#fff'}">${total}</span>
-        <span class="film-max">/${maxScore}</span>
+
+      <!-- Info panel right of poster -->
+      <div style="flex:1;padding:10px 12px;display:flex;flex-direction:column;justify-content:space-between;min-width:0">
+        <div>
+          <!-- Title + score on same row -->
+          <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:8px;margin-bottom:3px">
+            <h3 class="film-title" style="font-size:16px;line-height:1.2;margin:0">${film.title}</h3>
+            <div style="display:flex;align-items:baseline;gap:2px;flex-shrink:0">
+              <span data-total="${film.id}" style="font-family:'Syne',sans-serif;font-size:26px;font-weight:800;line-height:1;color:${tc};transition:color .3s">${total}</span>
+              <span style="font-family:'JetBrains Mono',monospace;font-size:11px;color:#444">/${maxScore}</span>
+            </div>
+          </div>
+          <!-- Director + duration -->
+          <div class="film-meta" style="font-size:12px;margin-bottom:0">${film.director} · ${film.duration}</div>
+        </div>
+        <!-- Progress bar -->
+        <div style="height:2px;background:#1a1a1a;border-radius:2px;margin-top:8px;overflow:hidden">
+          <div data-progress="${film.id}" style="height:100%;width:${(total/maxScore)*100}%;background:${pc};border-radius:2px;transition:width .4s ease,background .3s"></div>
+        </div>
       </div>
     </div>
 
-    <!-- Title row -->
-    <div class="film-title-row">
-      <h3 class="film-title">${film.title}</h3>
-      <div class="film-meta">${film.director} · ${film.duration}</div>
-    </div>
+    <!-- ─ CREW AVATARS ─ -->
+    ${crewHTML ? `<div style="padding:8px 12px;border-bottom:1px solid #1a1a1a">${crewHTML}</div>` : ''}
 
-    <!-- Progress bar -->
-    <div class="film-progress-track">
-      <div class="film-progress-fill" data-progress="${film.id}" style="width:${(total/maxScore)*100}%;background:${total>maxScore*0.8?'#00e5a0':total>maxScore*0.6?'#f59e0b':'#7c3aed'}"></div>
-    </div>
+    <!-- ─ SYNOPSIS (collapsed, subtle) ─ -->
+    ${film.synopsis ? `
+    <div style="padding:7px 14px;border-bottom:1px solid #1a1a1a">
+      <p style="font-size:12px;color:#444;line-height:1.5;font-style:italic;margin:0">${film.synopsis.length > 120 ? film.synopsis.substring(0,120)+'…' : film.synopsis}</p>
+    </div>` : ''}
 
-    <!-- Scoring rows -->
-    <div class="scoring-grid">
+    <!-- ─ SCORING ROWS ─ -->
+    <div class="scoring-grid" style="padding:10px 14px">
       ${rubric.map(c => `
-        <div class="scoring-row">
+        <div class="scoring-row" style="padding:7px 10px">
           <div class="scoring-criterion">
-            <span class="criterion-name">${c.label}</span>
-            <span class="criterion-desc">${c.desc}</span>
+            <span class="criterion-name" style="font-size:13px">${c.label}</span>
+            <span class="criterion-desc" style="font-size:11px">${c.desc}</span>
           </div>
           <div class="scoring-controls" data-score="${film.id}-${c.id}">
             ${[1,2,3,4,5].map(n => `
               <button class="score-btn ${(s[c.id]||0)===n?'active':''}"
                 onclick="setScore('${film.id}','${c.id}',${n})"
-                style="--active-color:${n>=4?'#00e5a0':n===3?'#f59e0b':'#ef4444'}">${n}</button>`).join('')}
-            <span class="score-weight">×${c.weight}</span>
-            <span class="score-subtotal">${(s[c.id]||0)*c.weight}</span>
+                style="--active-color:${n>=4?'#00e5a0':n===3?'#f59e0b':'#ef4444'};width:32px;height:28px;font-size:13px">${n}</button>`).join('')}
+            <span class="score-weight" style="font-size:11px">×${c.weight}</span>
+            <span class="score-subtotal" style="font-size:13px">${(s[c.id]||0)*c.weight}</span>
           </div>
         </div>`).join('')}
     </div>
 
-    <!-- Notes -->
-    <div class="notes-section">
-      <label class="notes-label">OBSERVACIONES DEL JUEZ</label>
+    <!-- ─ NOTES ─ -->
+    <div class="notes-section" style="padding:0 14px 10px">
+      <label class="notes-label">OBSERVACIONES</label>
       <textarea class="notes-textarea" data-notes="${film.id}"
-        placeholder="Notas sobre esta pieza para la deliberación..."
-        oninput="autoSaveNotes(this, '${film.id}')">${s.notes||''}</textarea>
+        placeholder="Notas para la deliberación..."
+        oninput="autoSaveNotes(this, '${film.id}')"
+        style="min-height:52px;font-size:13px">${s.notes||''}</textarea>
     </div>
 
-    <!-- Actions -->
-    <div class="card-actions">
-      <button class="btn-finalize ${isFinalized?'done':''}" onclick="finalizeEvaluation('${film.id}')">
+    <!-- ─ ACTIONS ─ -->
+    <div class="card-actions" style="padding:8px 14px 12px">
+      <button class="btn-finalize ${isFinalized?'done':''}" onclick="finalizeEvaluation('${film.id}')"
+        style="height:36px;font-size:13px">
         ${isFinalized ? '✓ Evaluación finalizada' : 'Finalizar evaluación'}
       </button>
       <div class="card-actions-right">
@@ -693,7 +906,7 @@ function showSaveConfirm(filmId) {
 html, body {
   height: 100%; background: var(--bg);
   color: var(--text); font-family: var(--font-sans);
-  overflow-x: hidden; font-size: 14px; line-height: 1.5;
+  overflow-x: hidden; font-size: 15px; line-height: 1.5;
 }
 
 #app { min-height: 100vh; }
@@ -971,22 +1184,22 @@ html, body {
 }
 .film-card-header-left { display: flex; align-items: center; gap: 8px; }
 .film-type-badge {
-  font-family: var(--font-mono); font-size: 9px; font-weight: 600;
-  padding: 2px 7px; border-radius: 3px; border: 1px solid;
+  font-family: var(--font-mono); font-size: 10px; font-weight: 600;
+  padding: 3px 8px; border-radius: 3px; border: 1px solid;
   letter-spacing: 0.08em;
 }
 .film-status {
-  font-family: var(--font-mono); font-size: 9px; letter-spacing: 0.12em;
+  font-family: var(--font-mono); font-size: 10px; letter-spacing: 0.12em;
   color: var(--text-3);
 }
 .film-status.finalized { color: var(--green); }
 .film-card-header-right { display: flex; align-items: baseline; gap: 3px; }
 .film-total { font-family: var(--font-display); font-size: 28px; font-weight: 800; line-height: 1; transition: color 0.3s; }
-.film-max { font-family: var(--font-mono); font-size: 11px; color: var(--text-3); }
+.film-max { font-family: var(--font-mono); font-size: 12px; color: var(--text-3); }
 
 .film-title-row { padding: 8px 16px 10px; }
-.film-title { font-family: var(--font-display); font-size: 18px; font-weight: 700; margin-bottom: 2px; }
-.film-meta { font-size: 11px; color: var(--text-3); font-family: var(--font-mono); }
+.film-title { font-family: var(--font-display); font-size: 20px; font-weight: 700; margin-bottom: 2px; }
+.film-meta { font-size: 13px; color: var(--text-3); font-family: var(--font-mono); }
 
 .film-progress-track {
   height: 2px; background: var(--bg-4); margin: 0 16px 0;
@@ -998,21 +1211,21 @@ html, body {
 
 .scoring-row {
   display: flex; align-items: center; justify-content: space-between; gap: 16px;
-  padding: 8px 10px; border-radius: 6px; background: var(--bg-3);
+  padding: 9px 12px; border-radius: 6px; background: var(--bg-3);
   border: 1px solid transparent; transition: border-color 0.15s;
 }
 .scoring-row:hover { border-color: var(--border); }
 
 .scoring-criterion { flex: 1; min-width: 0; }
-.criterion-name { font-size: 12px; font-weight: 600; display: block; margin-bottom: 1px; }
-.criterion-desc { font-size: 10px; color: var(--text-3); font-family: var(--font-mono); display: block; }
+.criterion-name { font-size: 13px; font-weight: 600; display: block; margin-bottom: 2px; }
+.criterion-desc { font-size: 11px; color: var(--text-3); font-family: var(--font-mono); display: block; }
 
-.scoring-controls { display: flex; align-items: center; gap: 4px; flex-shrink: 0; }
+.scoring-controls { display: flex; align-items: center; gap: 5px; flex-shrink: 0; }
 
 .score-btn {
-  width: 32px; height: 28px; border-radius: 5px;
+  width: 34px; height: 30px; border-radius: 5px;
   border: 1px solid var(--border-2); background: var(--bg-4);
-  color: var(--text-3); font-family: var(--font-mono); font-size: 12px; font-weight: 500;
+  color: var(--text-3); font-family: var(--font-mono); font-size: 13px; font-weight: 500;
   cursor: pointer; transition: all 0.12s;
 }
 .score-btn:hover { border-color: #555; color: var(--text); background: var(--bg-3); }
@@ -1022,18 +1235,18 @@ html, body {
 }
 
 .score-weight {
-  font-family: var(--font-mono); font-size: 10px; color: var(--text-3);
-  margin-left: 4px; min-width: 20px;
+  font-family: var(--font-mono); font-size: 11px; color: var(--text-3);
+  margin-left: 4px; min-width: 22px;
 }
 .score-subtotal {
-  font-family: var(--font-mono); font-size: 12px; font-weight: 600; color: var(--text-2);
-  min-width: 24px; text-align: right;
+  font-family: var(--font-mono); font-size: 13px; font-weight: 600; color: var(--text-2);
+  min-width: 26px; text-align: right;
 }
 
 /* ─── NOTES ─────────────────────────────────────────────────────────────────── */
 .notes-section { padding: 0 16px 12px; }
 .notes-label {
-  font-family: var(--font-mono); font-size: 9px; letter-spacing: 0.18em;
+  font-family: var(--font-mono); font-size: 10px; letter-spacing: 0.18em;
   color: var(--text-3); display: block; margin-bottom: 6px;
 }
 .notes-textarea {
