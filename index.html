@@ -27,6 +27,11 @@ const firebaseConfig = {
 let app, db;
 let currentJudge = null;
 let currentCategory = 'overview';
+let currentRole = 'judge';
+let adminAuthenticated = false;
+const ADMIN_PASSWORD = 'PARALLAX_ADMIN_2026';
+let autosaveInterval = null;
+let beforeUnloadRegistered = false;
 let unsubscribers = [];
 
 // ─── DATA MODEL ──────────────────────────────────────────────────────────────
@@ -416,6 +421,7 @@ function buildPlatform(demoMode) {
       </div>
       <nav class="topbar-nav">
         <button class="nav-tab active" data-tab="overview" onclick="switchTab('overview')">Overview</button>
+        <button class="nav-tab" data-tab="results" onclick="switchTab('results')">Resultados</button>
         <button class="nav-tab" data-tab="animacion-2d" onclick="switchTab('animacion-2d')">
           <span class="nav-dot" style="background:#00e5a0"></span>Animación 2D
         </button>
@@ -454,11 +460,18 @@ function buildPlatform(demoMode) {
 
   // Global functions — defined BEFORE first use
   window.switchTab = function(tab) {
+    if (tab === 'admin' && !adminAuthenticated) {
+      openAdminLogin();
+      return;
+    }
+
     currentCategory = tab;
     document.querySelectorAll('.nav-tab').forEach(t => {
       t.classList.toggle('active', t.dataset.tab === tab);
     });
+
     if (tab === 'overview') renderOverview();
+    else if (tab === 'results') renderJudgeResultsOverview();
     else if (tab === 'admin') renderAdminPanel();
     else renderCategoryView(tab);
   };
@@ -547,22 +560,66 @@ function buildPlatform(demoMode) {
     }
   };
 
-  window.finalizeEvaluation = async function(filmId) {
-    if (!scores[filmId]) return;
-    scores[filmId].finalized = true;
-    persistScores(); // ← save finalized state
-    const card = document.querySelector(`[data-film="${filmId}"]`);
-    if (card) {
-      card.classList.add('finalized');
-      const badge = card.querySelector('.film-status');
-      if (badge) { badge.textContent = '✓ FINALIZADO'; badge.className = 'film-status finalized'; }
+  window.finalizeEvaluation = async function(filmId, buttonEl) {
+    if (!filmId) return;
+
+    if (!scores[filmId]) scores[filmId] = {};
+    if (scores[filmId].finalized) {
+      showEvaluationToast('Evaluación ya enviada', 'Esta evaluación ya quedó registrada.');
+      return;
     }
-    if (!demoMode && db) {
-      await setDoc(doc(db, 'scores', `${currentJudge}_${filmId}`), {
-        judgeId: currentJudge,
-        judgeName: JUDGE_NAMES[currentJudge] || `Juez ${currentJudge}`,
-        finalized: true, finalizedAt: serverTimestamp()
-      }, { merge: true });
+
+    if (buttonEl) {
+      buttonEl.dataset.locked = 'true';
+      buttonEl.disabled = true;
+      buttonEl.classList.add('submit-loading');
+      buttonEl.textContent = 'Enviando evaluación...';
+    }
+
+    try {
+      scores[filmId].finalized = true;
+      persistScores();
+
+      const card = document.querySelector(`[data-film="${filmId}"]`);
+      if (card) {
+        card.classList.add('finalized');
+        const badge = card.querySelector('.film-status');
+        if (badge) { badge.textContent = '✓ ENVIADA'; badge.className = 'film-status finalized'; }
+      }
+
+      if (!demoMode && db) {
+        await setDoc(doc(db, 'scores', `${currentJudge}_${filmId}`), {
+          judgeId: currentJudge,
+          judgeName: JUDGE_NAMES[currentJudge] || `Juez ${currentJudge}`,
+          filmId,
+          finalized: true,
+          finalizedAt: serverTimestamp(),
+          updatedAt: serverTimestamp()
+        }, { merge: true });
+      }
+
+      if (buttonEl) {
+        buttonEl.classList.remove('submit-loading');
+        buttonEl.classList.add('submit-success', 'done');
+        buttonEl.textContent = '✓ Evaluación enviada';
+      }
+
+      showEvaluationToast('Evaluación enviada correctamente', 'Tu evaluación ya quedó registrada en el sistema.');
+      updateRankingPanel();
+      updateLiveIndicators();
+    } catch (err) {
+      console.error('Finalize evaluation error:', err);
+      scores[filmId].finalized = false;
+      persistScores();
+
+      if (buttonEl) {
+        buttonEl.dataset.locked = 'false';
+        buttonEl.disabled = false;
+        buttonEl.classList.remove('submit-loading');
+        buttonEl.textContent = 'Finalizar evaluación';
+      }
+
+      showEvaluationToast('Error al enviar evaluación', 'No se pudo guardar. Intenta nuevamente.');
     }
   };
 
@@ -606,10 +663,15 @@ function buildPlatform(demoMode) {
   };
 
   // ── AUTOSAVE every 60 seconds ───────────────────────────────────────────────
-  setInterval(() => { persistScores(); }, 60000);
+  if (!autosaveInterval) {
+    autosaveInterval = setInterval(() => { persistScores(); }, 60000);
+  }
 
   // ── SAVE on page unload / tab close ────────────────────────────────────────
-  window.addEventListener('beforeunload', () => { persistScores(); });
+  if (!beforeUnloadRegistered) {
+    window.addEventListener('beforeunload', () => { persistScores(); });
+    beforeUnloadRegistered = true;
+  }
 
   // Set up realtime if Firebase is available
   if (!demoMode && db) {
@@ -810,7 +872,82 @@ function getScoreForJudge(filmId, judgeId, rubricKey) {
   }, 0);
 }
 
+
+function getCombinedCategoryResults() {
+  return Object.entries(CATEGORIES).map(([catId, cat]) => {
+    const films = getAllFilmsForCategory(catId);
+    const rubricKey = cat.rubric;
+    const maxPer = getMaxScore(rubricKey);
+    const rows = films.map(f => {
+      const sA = getScoreForJudge(f.id, 'A', rubricKey);
+      const sB = getScoreForJudge(f.id, 'B', rubricKey);
+      const total = sA + sB;
+      return { ...f, sA, sB, total, max: maxPer * 2 };
+    }).sort((a,b) => b.total - a.total);
+    return { catId, cat, rows, maxPer };
+  });
+}
+
+function renderJudgeResultsOverview() {
+  const catResults = getCombinedCategoryResults();
+  $('main-content').innerHTML = `
+  <div style="padding:20px 24px 60px;max-width:1400px">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:24px;flex-wrap:wrap;gap:12px">
+      <div>
+        <div style="font-family:'JetBrains Mono',monospace;font-size:10px;letter-spacing:.2em;color:#00e5a0;margin-bottom:6px">OVERVIEW GENERAL · SOLO LECTURA</div>
+        <h1 style="font-family:'Syne',sans-serif;font-size:28px;font-weight:800">Ranking General del Festival</h1>
+        <div style="font-size:13px;color:#666;font-family:'JetBrains Mono',monospace;margin-top:2px">Puntajes acumulados de jueces · Sin herramientas administrativas</div>
+      </div>
+      <div style="font-family:'JetBrains Mono',monospace;font-size:10px;color:#666;border:1px solid #2a2a2a;border-radius:999px;padding:8px 12px;background:#111">READ ONLY</div>
+    </div>
+
+    ${catResults.map(({ cat, rows, maxPer }) => {
+      const leader = rows[0];
+      return `
+      <div style="margin-bottom:28px;background:#161616;border:1px solid #2a2a2a;border-radius:12px;overflow:hidden">
+        <div style="display:flex;align-items:center;justify-content:space-between;padding:14px 20px;background:#111;border-bottom:1px solid #222">
+          <div style="display:flex;align-items:center;gap:10px">
+            <div style="width:8px;height:8px;border-radius:50%;background:${cat.color};box-shadow:0 0 8px ${cat.color}"></div>
+            <span style="font-family:'Syne',sans-serif;font-size:16px;font-weight:700">${cat.label}</span>
+          </div>
+          ${leader && leader.total > 0 ? `
+          <div style="display:flex;align-items:center;gap:8px">
+            <span style="font-family:'JetBrains Mono',monospace;font-size:10px;color:#666">LÍDER ACTUAL:</span>
+            <span style="font-family:'Syne',sans-serif;font-size:14px;font-weight:700;color:${cat.color}">${leader.title}</span>
+            <span style="font-family:'JetBrains Mono',monospace;font-size:13px;font-weight:700;color:${cat.color}">${leader.total}<span style="font-size:10px;color:#444">/${leader.max}</span></span>
+          </div>` : '<span style="font-family:\'JetBrains Mono\',monospace;font-size:10px;color:#444">SIN DATOS AÚN</span>'}
+        </div>
+        <div style="display:grid;grid-template-columns:2fr 1fr 1fr 1fr;padding:8px 20px;background:#0f0f0f;border-bottom:1px solid #1a1a1a">
+          ${['CORTOMETRAJE','JUEZ A · IL','JUEZ B · AT','TOTAL'].map(h =>
+            `<div style="font-family:'JetBrains Mono',monospace;font-size:9px;letter-spacing:.15em;color:#444">${h}</div>`
+          ).join('')}
+        </div>
+        ${rows.map((f, i) => {
+          const pct = f.max > 0 ? (f.total / f.max * 100) : 0;
+          const isFirst = i === 0 && f.total > 0;
+          return `
+          <div style="display:grid;grid-template-columns:2fr 1fr 1fr 1fr;padding:10px 20px;border-bottom:1px solid #1c1c1c;align-items:center;background:${isFirst ? 'rgba('+hexToRgb(cat.color)+',.04)' : 'transparent'}">
+            <div>
+              <div style="display:flex;align-items:center;gap:8px;margin-bottom:5px">
+                <span style="font-family:'JetBrains Mono',monospace;font-size:10px;color:#444;min-width:16px">${i+1}</span>
+                ${f.poster ? `<img src="${f.poster}" style="width:28px;height:20px;object-fit:cover;border-radius:3px;flex-shrink:0" loading="lazy" onerror="this.style.display='none'">` : ''}
+                <span style="font-size:14px;font-weight:600;color:${isFirst ? cat.color : '#ccc'}">${f.title}</span>
+                ${isFirst ? `<span style="font-family:'JetBrains Mono',monospace;font-size:8px;padding:2px 6px;border-radius:3px;background:rgba(${hexToRgb(cat.color)},.15);color:${cat.color};border:1px solid rgba(${hexToRgb(cat.color)},.3)">★ LÍDER</span>` : ''}
+              </div>
+              <div style="height:3px;background:#1a1a1a;border-radius:3px;overflow:hidden;margin-left:24px"><div style="height:100%;width:${pct}%;background:${cat.color};border-radius:3px;transition:width .5s ease;opacity:${f.total>0?1:.2}"></div></div>
+            </div>
+            <div style="font-family:'Syne',sans-serif;font-size:20px;font-weight:700;color:${f.sA>0?'#aaa':'#333'}">${f.sA > 0 ? f.sA : '—'}<span style="font-size:10px;color:#333">/${maxPer}</span></div>
+            <div style="font-family:'Syne',sans-serif;font-size:20px;font-weight:700;color:${f.sB>0?'#aaa':'#333'}">${f.sB > 0 ? f.sB : '—'}<span style="font-size:10px;color:#333">/${maxPer}</span></div>
+            <div style="font-family:'Syne',sans-serif;font-size:24px;font-weight:800;color:${f.total > f.max*.8 ? '#00e5a0' : f.total > f.max*.5 ? cat.color : f.total > 0 ? '#aaa' : '#333'}">${f.total > 0 ? f.total : '—'}<span style="font-size:10px;color:#333">/${f.max}</span></div>
+          </div>`;
+        }).join('')}
+      </div>`;
+    }).join('')}
+  </div>`;
+}
+
 function renderAdminPanel() {
+  if (!adminAuthenticated) { openAdminLogin(); return; }
   const allFilms = [...FILMS['2d'], ...FILMS['3d'], ...FILMS.intl];
 
   // Build combined scores per category
@@ -1453,7 +1590,7 @@ function renderFilmCard(film, rubric, maxScore, catColor, idx) {
           </div>
           <div class="scoring-controls" data-score="${film.id}-${c.id}">
             ${[1,2,3,4,5].map(n => `
-              <button class="score-btn ${(s[c.id]||0)===n?'active':''}"
+              <button type="button" class="score-btn ${(s[c.id]||0)===n?'active':''}"
                 onclick="setScore('${film.id}','${c.id}',${n})"
                 style="--active-color:${n>=4?'#00e5a0':n===3?'#f59e0b':'#ef4444'};width:32px;height:28px;font-size:13px">${n}</button>`).join('')}
             <span class="score-weight" style="font-size:11px">×${c.weight}</span>
@@ -1473,9 +1610,10 @@ function renderFilmCard(film, rubric, maxScore, catColor, idx) {
 
     <!-- ─ ACTIONS ─ -->
     <div class="card-actions" style="padding:8px 14px 12px">
-      <button class="btn-finalize ${isFinalized?'done':''}" onclick="finalizeEvaluation('${film.id}')"
+      <button class="btn-finalize ${isFinalized?'done submit-success':''}" onclick="finalizeEvaluation('${film.id}', this)"
+        ${isFinalized ? 'disabled data-locked="true"' : ''}
         style="height:36px;font-size:13px">
-        ${isFinalized ? '✓ Evaluación finalizada' : 'Finalizar evaluación'}
+        ${isFinalized ? '✓ Evaluación enviada' : 'Finalizar evaluación'}
       </button>
       <div class="card-actions-right">
         <span class="last-saved" id="saved-${film.id}"></span>
@@ -1507,6 +1645,68 @@ function showSaveConfirm(filmId) {
     setTimeout(() => { el.textContent = ''; }, 2000);
   }
 }
+
+
+// ─── UX / PERMISSIONS HELPERS ────────────────────────────────────────────────
+function showEvaluationToast(title, subtitle = '') {
+  const oldToast = document.querySelector('.evaluation-toast');
+  if (oldToast) oldToast.remove();
+  const toast = document.createElement('div');
+  toast.className = 'evaluation-toast';
+  toast.innerHTML = `<div class="toast-title">${title}</div><div class="toast-sub">${subtitle}</div>`;
+  document.body.appendChild(toast);
+  requestAnimationFrame(() => toast.classList.add('show'));
+  setTimeout(() => {
+    toast.classList.remove('show');
+    setTimeout(() => toast.remove(), 300);
+  }, 3500);
+}
+
+function openAdminLogin() {
+  const modal = document.getElementById('adminLoginModal');
+  if (modal) {
+    modal.classList.remove('hidden');
+    const input = document.getElementById('adminPasswordInput');
+    if (input) setTimeout(() => input.focus(), 50);
+  }
+}
+
+function closeAdminLogin() {
+  const modal = document.getElementById('adminLoginModal');
+  if (modal) modal.classList.add('hidden');
+}
+
+window.validateAdminAccess = function() {
+  const input = document.getElementById('adminPasswordInput');
+  const value = input ? input.value : '';
+  if (value === ADMIN_PASSWORD) {
+    adminAuthenticated = true;
+    currentRole = 'admin';
+    document.body.classList.add('admin-mode');
+    closeAdminLogin();
+    showEvaluationToast('Modo administrador activado', 'Acceso completo habilitado.');
+    currentCategory = 'admin';
+    document.querySelectorAll('.nav-tab').forEach(t => t.classList.toggle('active', t.dataset.tab === 'admin'));
+    renderAdminPanel();
+  } else {
+    showEvaluationToast('Password incorrecto', 'Acceso denegado.');
+  }
+};
+
+window.cancelAdminAccess = function() {
+  closeAdminLogin();
+  const activeTab = document.querySelector('.nav-tab.active');
+  if (!activeTab || activeTab.dataset.tab === 'admin') {
+    switchTab('overview');
+  }
+};
+
+window.addEventListener('keydown', (e) => {
+  if (e.key === 'Escape') closeAdminLogin();
+  if (e.key === 'Enter' && !document.getElementById('adminLoginModal')?.classList.contains('hidden')) {
+    validateAdminAccess();
+  }
+});
 </script>
 
 <style>
@@ -1959,8 +2159,73 @@ html, body {
   .nav-tab { padding: 6px 8px; font-size: 12px; }
   .login-card { width: calc(100vw - 32px); padding: 32px 24px; }
 }
+
+
+/* ─── UX FINALIZACIÓN Y PERMISOS ───────────────────────────────────────────── */
+.submit-loading { opacity: .75; pointer-events: none; position: relative; }
+.submit-loading::after {
+  content: ''; width: 13px; height: 13px; border-radius: 50%;
+  border: 2px solid rgba(255,255,255,.35); border-top-color: #fff;
+  display: inline-block; margin-left: 9px; vertical-align: -2px;
+  animation: spinLoader .75s linear infinite;
+}
+@keyframes spinLoader { to { transform: rotate(360deg); } }
+.submit-success, .btn-finalize.done {
+  background: rgba(0,229,160,.12) !important;
+  border-color: rgba(0,229,160,.35) !important;
+  color: var(--green) !important;
+}
+.btn-finalize:disabled { cursor: default; opacity: 1; }
+.evaluation-toast {
+  position: fixed; right: 24px; bottom: 24px; z-index: 999999;
+  min-width: 300px; max-width: 420px; padding: 16px 18px;
+  background: rgba(18,18,18,.96); border: 1px solid rgba(255,255,255,.12);
+  border-radius: 14px; box-shadow: 0 10px 30px rgba(0,0,0,.38);
+  transform: translateY(18px); opacity: 0; transition: transform .28s ease, opacity .28s ease;
+}
+.evaluation-toast.show { transform: translateY(0); opacity: 1; }
+.toast-title { font-size: 13px; font-weight: 700; color: #fff; margin-bottom: 4px; }
+.toast-sub { font-size: 12px; color: var(--text-2); line-height: 1.4; }
+.admin-modal {
+  position: fixed; inset: 0; z-index: 999998; display: flex; align-items: center; justify-content: center;
+  background: rgba(0,0,0,.78); backdrop-filter: blur(10px);
+}
+.admin-modal.hidden { display: none; }
+.admin-modal-content {
+  width: min(360px, calc(100vw - 32px)); background: #111; border: 1px solid #2a2a2a;
+  border-radius: 14px; padding: 24px; box-shadow: 0 20px 60px rgba(0,0,0,.45);
+}
+.admin-modal-kicker { font-family: var(--font-mono); font-size: 9px; letter-spacing: .18em; color: var(--amber); margin-bottom: 8px; }
+.admin-modal-title { font-family: var(--font-display); font-size: 22px; font-weight: 800; margin-bottom: 8px; }
+.admin-modal-copy { font-size: 13px; color: var(--text-3); margin-bottom: 16px; }
+.admin-modal-input {
+  width: 100%; height: 42px; border-radius: 8px; background: var(--bg-3); border: 1px solid var(--border);
+  color: var(--text); padding: 0 12px; outline: none; margin-bottom: 12px;
+}
+.admin-modal-input:focus { border-color: rgba(245,158,11,.45); }
+.admin-modal-actions { display: flex; gap: 8px; }
+.admin-modal-btn {
+  flex: 1; height: 38px; border-radius: 7px; cursor: pointer; border: 1px solid var(--border-2);
+  background: var(--bg-3); color: var(--text-2); font-family: var(--font-mono); font-size: 10px; letter-spacing: .1em;
+}
+.admin-modal-btn.primary { border-color: rgba(245,158,11,.35); color: var(--amber); background: rgba(245,158,11,.08); }
 </style>
 
+<body>
+<div id="adminLoginModal" class="admin-modal hidden">
+  <div class="admin-modal-content">
+    <div class="admin-modal-kicker">ACCESO PROTEGIDO</div>
+    <div class="admin-modal-title">Panel Admin</div>
+    <div class="admin-modal-copy">Ingresa la contraseña para ver herramientas administrativas, reset de votos y métricas internas.</div>
+    <input id="adminPasswordInput" class="admin-modal-input" type="password" placeholder="Password de administrador" autocomplete="off">
+    <div class="admin-modal-actions">
+      <button class="admin-modal-btn" onclick="cancelAdminAccess()">Cancelar</button>
+      <button class="admin-modal-btn primary" onclick="validateAdminAccess()">Entrar</button>
+    </div>
+  </div>
+</div>
+
 <div id="app"></div>
+</body>
 </html>
 HTMLEOF
