@@ -463,6 +463,71 @@ function buildPlatform(demoMode) {
     else renderCategoryView(tab);
   };
 
+  window.setScore = async function(filmId, criteriaId, value) {
+
+  // Crear objeto film si no existe
+  if (!scores[filmId]) {
+    scores[filmId] = {};
+  }
+
+  // Guardar score
+  scores[filmId][criteriaId] = value;
+
+  // Obtener grupo EXACTO
+  const scoreGroup = document.querySelector(
+    `[data-score="${filmId}-${criteriaId}"]`
+  );
+
+  if (scoreGroup) {
+
+    // SOLO botones de este criterio
+    const buttons = scoreGroup.querySelectorAll('.score-btn');
+
+    // Limpiar activos previos
+    buttons.forEach(btn => {
+      btn.classList.remove('active');
+    });
+
+    // Activar botón correcto
+    const targetButton = buttons[value - 1];
+
+    if (targetButton) {
+      targetButton.classList.add('active');
+    }
+
+    // Actualizar subtotal visual
+    const subtotal = scoreGroup.querySelector('.score-subtotal');
+
+    if (subtotal) {
+
+      // Obtener peso visual ×5 ×4 etc
+      const weightEl = scoreGroup.querySelector('.score-weight');
+
+      let weight = 1;
+
+      if (weightEl) {
+        const match = weightEl.textContent.match(/\d+/);
+        if (match) weight = parseInt(match[0]);
+      }
+
+      subtotal.textContent = value * weight;
+    }
+  }
+
+  // Actualizar total general
+  updateFilmTotal(filmId);
+
+  // Guardar local
+  persistScores();
+
+  // Firebase
+  if (!demoMode && db) {
+    await saveToFirebase(filmId, criteriaId, value);
+  }
+
+  // Ranking
+  updateRankingPanel();
+};
 
   window.saveNotes = async function(filmId) {
     const ta = document.querySelector(`[data-notes="${filmId}"]`);
